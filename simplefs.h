@@ -4,6 +4,7 @@
 
 /*these are structures stored on disk*/
 
+/*----IMPLEMENTARE INODE---*/
 // header, occupies the first portion of each block in the disk
 // represents a chained list of blocks
 typedef struct {
