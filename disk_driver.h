@@ -23,6 +23,7 @@ typedef struct {
    have to be calculated after the space occupied by the bitmap
 */
 
+//Valerio
 // opens the file (creating it if necessary_
 // allocates the necessary space on the disk
 // calculates how big the bitmap should be
@@ -31,21 +32,26 @@ typedef struct {
 // with all 0 (to denote the free space);
 void DiskDriver_init(DiskDriver* disk, const char* filename, int num_blocks);
 
+//Valerio
 // reads the block in position block_num
 // returns -1 if the block is free accrding to the bitmap
 // 0 otherwise
 int DiskDriver_readBlock(DiskDriver* disk, void* dest, int block_num);
 
+//Valerio
 // writes a block in position block_num, and alters the bitmap accordingly
 // returns -1 if operation not possible
 int DiskDriver_writeBlock(DiskDriver* disk, void* src, int block_num);
 
+//Valerio
 // frees a block in position block_num, and alters the bitmap accordingly
 // returns -1 if operation not possible
 int DiskDriver_freeBlock(DiskDriver* disk, int block_num);
 
+//Valerio
 // returns the first free blockin the disk from position (checking the bitmap)
 int DiskDriver_getFreeBlock(DiskDriver* disk, int start);
 
+//Valerio
 // writes the data (flushing the mmaps)
 int DiskDriver_flush(DiskDriver* disk);
