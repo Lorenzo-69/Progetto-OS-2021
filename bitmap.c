@@ -23,6 +23,23 @@ int BitMap_get(BitMap* bmap, int start, int status){
 }
 
 // Stefano
+// da completare
 int BitMap_set(BitMap* bmap, int pos, int status){
-  return 0;
+  if(pos < 0) return -1;
+
+  BitMapEntryKey bitmapkey = BitMap_blockToIndex(pos);
+
+  char set = bmap->entries[bitmapkey.entry_num];
+
+  if(status) {
+
+    bmap->entries[bitmapkey.entry_num] = set;
+
+    return set;
+
+  }else {
+
+    return 0;
+
+  }
 }
