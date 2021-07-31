@@ -7,12 +7,26 @@
 /*----IMPLEMENTARE INODE---*/
 // header, occupies the first portion of each block in the disk
 // represents a chained list of blocks
-typedef struct {
+/* typedef struct {
   int previous_block; // chained list (previous block)
   int next_block;     // chained list (next_block)
   int block_in_file; // position in the file, if 0 we have a file control block
 } BlockHeader;
+*/
 
+// Stefano
+typedef struct {
+  int pre;
+  int blocks[90];
+  int post;
+} FirstBlockIndex;
+
+// Stefano
+typedef struct {
+  int pre;
+  int blocks[120];
+  int post;
+} BlockIndex;
 
 // this is in the first block of a chain, after the header
 typedef struct {
