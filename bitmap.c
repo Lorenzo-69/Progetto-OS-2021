@@ -25,11 +25,11 @@ int BitMap_get(BitMap* bmap, int start, int status){
 // Stefano
 int BitMap_set(BitMap* bmap, int pos, int status){
 
-  if(pos < 0) return -1;
+  if(pos < 0 || pos > bmap->num_bits) return -1;
 
   BitMapEntryKey bitmapkey = BitMap_blockToIndex(pos);
 
-  char flag = 8 << bitmapkey.entry_num;  // controllo
+  char flag = 1 << bitmapkey.entry_num;  // controllo
 
   char set = bmap->entries[bitmapkey.entry_num]; // settare
 
