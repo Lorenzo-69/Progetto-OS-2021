@@ -14,19 +14,17 @@
 } BlockHeader;
 */
 
-// Stefano
 typedef struct {
-  int pre;
+  int pre;        //predecessore
   int blocks[90];
-  int post;
+  int post;       //successore
 } FirstBlockIndex;
 
-// Stefano
 typedef struct {
-  int pre;
+  int pre;        //predecessore
   int blocks[120];
-  int post;
-} BlockIndex;
+  int post;       //successore
+} BlockIndex; 
 
 // this is in the first block of a chain, after the header
 typedef struct {
@@ -45,32 +43,32 @@ typedef struct {
 
 /******************* stuff on disk BEGIN *******************/
 typedef struct {
-  BlockHeader header;
+  FirstBlockIndex header;
   FileControlBlock fcb;
-  char data[BLOCK_SIZE-sizeof(FileControlBlock) - sizeof(BlockHeader)] ;
+  int num;
 } FirstFileBlock;
 
+// modificare
 // this is one of the next physical blocks of a file
 typedef struct {
-  BlockHeader header;
-  char  data[BLOCK_SIZE-sizeof(BlockHeader)];
+  int pos;       //posizione
+  int num;
+  char  data[BLOCK_SIZE-sizeof(int)-sizeof(int)];
 } FileBlock;
 
 // this is the first physical block of a directory
 typedef struct {
-  BlockHeader header;
+  FirstBlockIndex header;
   FileControlBlock fcb;
   int num_entries;
-  int file_blocks[ (BLOCK_SIZE
-		   -sizeof(BlockHeader)
-		   -sizeof(FileControlBlock)
-		    -sizeof(int))/sizeof(int) ];
 } FirstDirectoryBlock;
 
+// modificare
 // this is remainder block of a directory
 typedef struct {
-  BlockHeader header;
-  int file_blocks[ (BLOCK_SIZE-sizeof(BlockHeader))/sizeof(int) ];
+  int index;
+  int pos;       //posizione
+  int file_blocks[ (BLOCK_SIZE-sizeof(int))/sizeof(int) ];
 } DirectoryBlock;
 /******************* stuff on disk END *******************/
 
@@ -88,7 +86,7 @@ typedef struct {
   SimpleFS* sfs;                   // pointer to memory file system structure
   FirstFileBlock* fcb;             // pointer to the first block of the file(read it)
   FirstDirectoryBlock* directory;  // pointer to the directory where the file is stored
-  BlockHeader* current_block;      // current block in the file
+  FileBlock* current_block;      // current block in the file
   int pos_in_file;                 // position of the cursor
 } FileHandle;
 
@@ -96,7 +94,7 @@ typedef struct {
   SimpleFS* sfs;                   // pointer to memory file system structure
   FirstDirectoryBlock* dcb;        // pointer to the first block of the directory(read it)
   FirstDirectoryBlock* directory;  // pointer to the parent directory (null if top level)
-  BlockHeader* current_block;      // current block in the directory
+  DirectoryBlock* current_block;      // current block in the directory
   int pos_in_dir;                  // absolute position of the cursor in the directory
   int pos_in_block;                // relative position of the cursor in the block
 } DirectoryHandle;
