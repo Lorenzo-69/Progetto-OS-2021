@@ -1,6 +1,6 @@
 #include bitmap.h
 #include disk_driver.h
-#inclue simplefs.h
+#include simplefs.h
 
 //Stefano
 // initializes a file system on an already made disk
