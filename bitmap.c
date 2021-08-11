@@ -11,7 +11,11 @@ BitMapEntryKey BitMap_blockToIndex(int num) {
 }
 
 int BitMap_indexToBlock(int entry, uint8_t bit_num){
-  return 0;
+
+  if(bit_num < 0 || entry < 0) return -1;
+  int index = ( entry*8 ) + bit_num;
+  return index; 
+
 }
 
 int BitMap_get(BitMap* bmap, int start, int status){
@@ -29,5 +33,26 @@ int BitMap_get(BitMap* bmap, int start, int status){
 }
 
 int BitMap_set(BitMap* bmap, int pos, int status){
-  return 0;
+
+  if(pos < 0 || pos > bmap->num_bits) return -1;
+
+  BitMapEntryKey bitmapkey = BitMap_blockToIndex(pos);
+
+  char flag = 1 << bitmapkey.entry_num;  // controllo
+
+  char set = bmap->entries[bitmapkey.entry_num]; // settare
+
+  if(status) {
+
+    bmap->entries[bitmapkey.entry_num] = set | flag;
+
+    return set | flag;
+
+  }else {
+
+    bmap->entries[bitmapkey.entry_num] = set & (~flag);
+
+    return set & (~flag);
+
+  }
 }
