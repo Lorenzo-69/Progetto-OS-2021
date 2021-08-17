@@ -5,7 +5,31 @@
 //Stefano
 // initializes a file system on an already made disk
 // returns a handle to the top level directory stored in the first block
-DirectoryHandle* SimpleFS_init(SimpleFS* fs, DiskDriver* disk);
+DirectoryHandle* SimpleFS_init(SimpleFS* fs, DiskDriver* disk) {
+    if(fs == NULL || disk == NULL) return NULL;
+
+    fs->disk = disk;
+
+    FirstDirectoryBlock* dcb = (FirstDirectoryBlock*) malloc(sizeof(FirstDirectoryBlock));
+    if(dcb == NULL){
+        return NULL
+    }
+
+    DirectoryHandle* dir = (DirectoryHandle*) malloc(sizeof(DirectoryHandle));
+
+    if(dir == NULL) {
+        return NULL;
+    }
+
+    dir->sfs = fs;
+    dir-> dcb = dcb;
+    dir->directory = NULL;
+    dir->current_block = NULL;
+    dir->pos_in_dir = 0;
+    dir->pos_in_block = 0;
+
+    return dir;
+}
 
 //Lorenzo
 // creates the inital structures, the top level directory
