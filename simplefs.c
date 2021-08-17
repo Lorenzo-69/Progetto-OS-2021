@@ -60,7 +60,25 @@ FileHandle* SimpleFS_createFile(DirectoryHandle* d, const char* filename) {
     }
 
     // settare FileControlBlock del FirstDirectoryBlock
-    fcb->fcb = ;
+    fcb->fcb.directory_block = d->dcb->fcd.block_in_disk;
+    fcb->fcb.block_in_disk = ;
+    strncpy(fcb->fcb.name,filename,128);
+    fcb->fcb.size_in_bytes = ;
+    fcb->fcb.size_in_blocks = 1;
+    fcb->fcb.is_dir = 0;
+
+    FileBlock* file = (FileBlock*) malloc(sizeof(FileBlock));
+    if(file == NULL) {
+        return NULL;
+    }
+    
+    // settare num
+    file->pos = 0;
+    file->num = ;
+    int len = BLOCK_SIZE -sizeof(int) - sizeof(int);
+    for(int i=0; i<len ; i++) {
+        file->data[i] = -1;
+    }
 
 
     FileHandle* fh = (FileHandle*) malloc(sizeof(FileHandle));
@@ -68,9 +86,7 @@ FileHandle* SimpleFS_createFile(DirectoryHandle* d, const char* filename) {
     fh->directory = d->dcb;
     fh->current_block = NULL;
     fh->pos_in_file = 0;
-
-    // settare fcb del fileHandle
-    fh->fcb = ;
+    fh->fcb = fcb;
 
     return fh;
 }
