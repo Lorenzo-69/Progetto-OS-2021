@@ -43,7 +43,37 @@ void SimpleFS_format(SimpleFS* fs);
 // creates an empty file in the directory d
 // returns null on error (file existing, no free blocks)
 // an empty file consists only of a block of type FirstBlock
-FileHandle* SimpleFS_createFile(DirectoryHandle* d, const char* filename);
+FileHandle* SimpleFS_createFile(DirectoryHandle* d, const char* filename) {
+    if(d == NULL || filename == NULL) return NULL;
+
+    FirstFileBlock* fcb = (FirstFileBlock*) malloc(sizeof(FirstFileBlock));
+    if(fcb == NULL) {
+        return NULL;
+    }
+
+    fcb->header.pre = -1;
+    fcb->header.post = -1;
+    fcb->num = 0;
+
+    for(int i=0; i<120; i++) {
+        fcb->header.blocks[i] = -1;   // tutti i blocchi vuoti a -1
+    }
+
+    // settare FileControlBlock del FirstDirectoryBlock
+    fcb->fcb = ;
+
+
+    FileHandle* fh = (FileHandle*) malloc(sizeof(FileHandle));
+    fh->sfs = d->sfs;
+    fh->directory = d->dcb;
+    fh->current_block = NULL;
+    fh->pos_in_file = 0;
+
+    // settare fcb del fileHandle
+    fh->fcb = ;
+
+    return fh;
+}
 
 //Lorenzo
 // reads in the (preallocated) blocks array, the name of all files in a directory 
