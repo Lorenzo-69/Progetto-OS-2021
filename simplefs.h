@@ -68,7 +68,7 @@ typedef struct {
 typedef struct {
   int index;
   int pos;       //posizione
-  int file_blocks[ (BLOCK_SIZE-sizeof(int))/sizeof(int) ];
+  int file_blocks[ (BLOCK_SIZE-sizeof(int)-sizeof(int))/sizeof(int) ];
 } DirectoryBlock;
 /******************* stuff on disk END *******************/
 
