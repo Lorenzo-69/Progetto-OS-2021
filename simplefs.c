@@ -10,6 +10,8 @@ DirectoryHandle* SimpleFS_init(SimpleFS* fs, DiskDriver* disk) {
 
     fs->disk = disk;
 
+    // controllare che il blocco sia disponibile
+
     FirstDirectoryBlock* dcb = (FirstDirectoryBlock*) malloc(sizeof(FirstDirectoryBlock));
     if(dcb == NULL){
         return NULL
@@ -46,6 +48,8 @@ void SimpleFS_format(SimpleFS* fs);
 FileHandle* SimpleFS_createFile(DirectoryHandle* d, const char* filename) {
     if(d == NULL || filename == NULL) return NULL;
 
+    // prendere dal disco il blocco libero
+
     FirstFileBlock* fcb = (FirstFileBlock*) malloc(sizeof(FirstFileBlock));
     if(fcb == NULL) {
         return NULL;
@@ -61,9 +65,9 @@ FileHandle* SimpleFS_createFile(DirectoryHandle* d, const char* filename) {
 
     // settare FileControlBlock del FirstDirectoryBlock
     fcb->fcb.directory_block = d->dcb->fcd.block_in_disk;
-    fcb->fcb.block_in_disk = ;
+    fcb->fcb.block_in_disk = ; // inserire blocco libero del disco
     strncpy(fcb->fcb.name,filename,128);
-    fcb->fcb.size_in_bytes = ;
+    fcb->fcb.size_in_bytes = BLOCK_SIZE;
     fcb->fcb.size_in_blocks = 1;
     fcb->fcb.is_dir = 0;
 
@@ -74,11 +78,13 @@ FileHandle* SimpleFS_createFile(DirectoryHandle* d, const char* filename) {
     
     // settare num
     file->pos = 0;
-    file->num = ;
+    file->num = ; // inserire blocco libero del disco
     int len = BLOCK_SIZE -sizeof(int) - sizeof(int);
     for(int i=0; i<len ; i++) {
         file->data[i] = -1;
     }
+
+    // scrivere su disco
 
 
     FileHandle* fh = (FileHandle*) malloc(sizeof(FileHandle));
@@ -98,7 +104,44 @@ int SimpleFS_readDir(char** names, DirectoryHandle* d);
 
 //Stefano
 // opens a file in the  directory d. The file should be exisiting
-FileHandle* SimpleFS_openFile(DirectoryHandle* d, const char* filename);
+FileHandle* SimpleFS_openFile(DirectoryHandle* d, const char* filename){
+    if(d == NULL || filename == NULL) return NULL;
+
+    // directory non vuota
+    if(d->dcb->num_entries > 0) {
+
+        FileHandle* fh = (FileHandle*) malloc(sizeof(FileHandle));
+        if(fh == NULL) return NULL;
+
+        // settare FirstFileBlock del FileHandle
+        fh->sfs = d->sfs;
+        fh->directory = d->dcb;
+        fh->current_block = NULL;
+        fh->pos_in_file = 0;
+
+        FirstFileBlock* f = (FirstFileBlock*) malloc(sizeof(FirstFileBloc));
+        if(f == NULL) return NULL;
+
+        DirectoryBlock* dir = (DirectoryBlock*) malloc(sizeof(DirectoryBlock));
+        if(dir == NULL) return NULL;
+
+        while (dir != NULL ){
+            for( int i=0; i< ; i++){
+                if(dir->file_block[i] > 0 ){
+                    if(strncmp(f->fcb.name,filename,128) == 0){
+                        fh->fcb = f;
+                        break;
+                    }
+                }
+            }
+        }
+
+
+        // directory vuota
+    } else {
+        return NULL
+    }
+}
 
 //Lorenzo
 // closes a file handle (destroyes it)
