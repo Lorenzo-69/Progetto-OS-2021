@@ -1,6 +1,6 @@
-#include bitmap.h
-#include disk_driver.h
-#include simplefs.h
+#include "bitmap.h"
+#include "disk_driver.h"
+#include "simplefs.h"
 
 //Stefano
 // initializes a file system on an already made disk
@@ -73,6 +73,7 @@ FileHandle* SimpleFS_createFile(DirectoryHandle* d, const char* filename) {
 
     FileBlock* file = (FileBlock*) malloc(sizeof(FileBlock));
     if(file == NULL) {
+        free(file);
         return NULL;
     }
     
@@ -94,6 +95,7 @@ FileHandle* SimpleFS_createFile(DirectoryHandle* d, const char* filename) {
     fh->pos_in_file = 0;
     fh->fcb = fcb;
 
+    free(file);
     return fh;
 }
 
@@ -113,20 +115,28 @@ FileHandle* SimpleFS_openFile(DirectoryHandle* d, const char* filename){
         FileHandle* fh = (FileHandle*) malloc(sizeof(FileHandle));
         if(fh == NULL) return NULL;
 
-        // settare FirstFileBlock del FileHandle
         fh->sfs = d->sfs;
         fh->directory = d->dcb;
         fh->current_block = NULL;
         fh->pos_in_file = 0;
 
         FirstFileBlock* f = (FirstFileBlock*) malloc(sizeof(FirstFileBloc));
-        if(f == NULL) return NULL;
+        if(f == NULL) {
+            free(f);
+            return NULL;
+        }
 
         DirectoryBlock* dir = (DirectoryBlock*) malloc(sizeof(DirectoryBlock));
-        if(dir == NULL) return NULL;
+        if(dir == NULL) {
+            free(f);
+            free(dir);
+            return NULL;
+        }
+
+        int len = ((BLOCK_SIZE-sizeof(int)-sizeof(int))/sizeof(int));
 
         while (dir != NULL ){
-            for( int i=0; i< ; i++){
+            for( int i=0; i< len; i++){
                 if(dir->file_block[i] > 0 ){
                     if(strncmp(f->fcb.name,filename,128) == 0){
                         fh->fcb = f;
@@ -141,6 +151,7 @@ FileHandle* SimpleFS_openFile(DirectoryHandle* d, const char* filename){
     } else {
         return NULL
     }
+    return NULL;
 }
 
 //Lorenzo
