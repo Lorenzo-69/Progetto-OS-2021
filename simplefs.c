@@ -10,15 +10,14 @@ DirectoryHandle* SimpleFS_init(SimpleFS* fs, DiskDriver* disk) {
 
     fs->disk = disk;
 
-    // controllare che il blocco sia disponibile
-
-    FirstDirectoryBlock* dcb = (FirstDirectoryBlock*) malloc(sizeof(FirstDirectoryBlock));
-    if(dcb == NULL){
+    FirstDirectoryBlock* fdb = (FirstDirectoryBlock*) malloc(sizeof(FirstDirectoryBlock));
+    if(fdb == NULL){
         return NULL
     }
 
-    DirectoryHandle* dir = (DirectoryHandle*) malloc(sizeof(DirectoryHandle));
+    // controllare che il blocco sia disponibile
 
+    DirectoryHandle* dir = (DirectoryHandle*) malloc(sizeof(DirectoryHandle));
     if(dir == NULL) {
         return NULL;
     }
@@ -48,13 +47,16 @@ void SimpleFS_format(SimpleFS* fs);
 FileHandle* SimpleFS_createFile(DirectoryHandle* d, const char* filename) {
     if(d == NULL || filename == NULL) return NULL;
 
+    if(d->sfs == NULL || d->sfs->disk == NULL || d->dcb == NULL) return NULL;
+
     // prendere dal disco il blocco libero
 
+
+    // creare primo blocco del file
     FirstFileBlock* fcb = (FirstFileBlock*) malloc(sizeof(FirstFileBlock));
     if(fcb == NULL) {
         return NULL;
     }
-
     fcb->header.pre = -1;
     fcb->header.post = -1;
     fcb->num = 0;
@@ -71,6 +73,8 @@ FileHandle* SimpleFS_createFile(DirectoryHandle* d, const char* filename) {
     fcb->fcb.size_in_blocks = 1;
     fcb->fcb.is_dir = 0;
 
+    // creare blocco successivo
+
     FileBlock* file = (FileBlock*) malloc(sizeof(FileBlock));
     if(file == NULL) {
         free(file);
@@ -85,7 +89,7 @@ FileHandle* SimpleFS_createFile(DirectoryHandle* d, const char* filename) {
         file->data[i] = -1;
     }
 
-    // scrivere su disco
+    // scrivere su disco il file
 
 
     FileHandle* fh = (FileHandle*) malloc(sizeof(FileHandle));
@@ -126,6 +130,7 @@ FileHandle* SimpleFS_openFile(DirectoryHandle* d, const char* filename){
             return NULL;
         }
 
+        // estrarre primo directory block
         DirectoryBlock* dir = (DirectoryBlock*) malloc(sizeof(DirectoryBlock));
         if(dir == NULL) {
             free(f);
@@ -135,6 +140,7 @@ FileHandle* SimpleFS_openFile(DirectoryHandle* d, const char* filename){
 
         int len = ((BLOCK_SIZE-sizeof(int)-sizeof(int))/sizeof(int));
 
+        // cerco il file
         while (dir != NULL ){
             for( int i=0; i< len; i++){
                 if(dir->file_block[i] > 0 ){
@@ -162,7 +168,54 @@ int SimpleFS_close(FileHandle* f);
 // writes in the file, at current position for size bytes stored in data
 // overwriting and allocating new space if necessary
 // returns the number of bytes written
-int SimpleFS_write(FileHandle* f, void* data, int size);
+int SimpleFS_write(FileHandle* f, void* data, int size){
+
+    FirstFileBlock* ffb = f->fcb;
+    int space = BLOCK_SIZE - sizeof(int)- sizeof(int);
+    int written = 0;
+
+    DiskDriver* disk = f->sfs->disk;
+
+    FileBlock* fb = (FileBlock*) malloc(sizeof(FileBlock));
+    if(fb == NULL) return -1;
+
+    FileBlock* temp = (FileBlock*) malloc(sizeof(FileBlock));
+    if(temp == NULL) return -1;
+
+    // indice blocco a cui accedere
+    int file_index;
+    int index_block = f->pos_in_file - 90*space;
+    if(index_block < 0) {
+        index_block = 0;
+        file_index = f->pos_in_file / (90*space);
+        f->pos_in_file = f->pos_in_file - file_index*space;
+    } else {
+        
+    }
+
+    FirstBlockIndex index = f->fcb->index;
+
+    // vado alla posizione giusta
+    if(f->pos_in_file < space) {
+        // estrarre file block
+
+        if(size <= space-f->pos_in_file) {
+            memcpy(temp->data + f->pos_in_file, (char*)data, size);
+            written += size;
+            if(f->pos_in_file+written > ffb->fcb.written_bytes)
+            ffb->fcb.written_bytes = f->pos_in_file + written;
+
+            free(temp);
+            return written;
+        }else {
+            memcpy(temp->data + f->pos_in_file, (char*) data, space - f->pos_in_file);
+            written += space- f->pos_in_file;
+            size = size - written;
+        }
+    } else {
+        
+    }
+}
 
 //Lorenzo
 // writes in the file, at current position size bytes stored in data
