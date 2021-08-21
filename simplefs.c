@@ -1,4 +1,4 @@
-#include "bitmap.h"
+
 #include "disk_driver.h"
 #include "simplefs.h"
 
@@ -16,6 +16,11 @@ DirectoryHandle* SimpleFS_init(SimpleFS* fs, DiskDriver* disk) {
     }
 
     // controllare che il blocco sia disponibile
+    int res = DiskDriver_readBlock(disk,fdb,0,sizeof(FirstDirectoryBlock));
+    if(res == -1){
+        free(fdb);
+        return NULL;
+    }
 
     DirectoryHandle* dir = (DirectoryHandle*) malloc(sizeof(DirectoryHandle));
     if(dir == NULL) {
@@ -47,9 +52,15 @@ void SimpleFS_format(SimpleFS* fs);
 FileHandle* SimpleFS_createFile(DirectoryHandle* d, const char* filename) {
     if(d == NULL || filename == NULL) return NULL;
 
-    if(d->sfs == NULL || d->sfs->disk == NULL || d->dcb == NULL) return NULL;
+    SimpleFS* fs = d->sfs;
+    DiskDriver* disk = fs->disk;
+    FirstDirectoryBlock* fdb = d->dcb;
+
+    if(fs == NULL || disk == NULL || fdb == NULL) return NULL;
 
     // prendere dal disco il blocco libero
+    int new_block = DiskDriver_getFreeBlock(disk,disk->header->first_free_block);
+    if(new_block == -1) return NULL;
 
 
     // creare primo blocco del file
@@ -66,14 +77,21 @@ FileHandle* SimpleFS_createFile(DirectoryHandle* d, const char* filename) {
     }
 
     // settare FileControlBlock del FirstDirectoryBlock
-    fcb->fcb.directory_block = d->dcb->fcd.block_in_disk;
-    fcb->fcb.block_in_disk = ; // inserire blocco libero del disco
+    fcb->fcb.directory_block = fdb->fcd.block_in_disk;
+    fcb->fcb.block_in_disk = new_block; // inserire blocco libero del disco
     strncpy(fcb->fcb.name,filename,128);
     fcb->fcb.size_in_bytes = BLOCK_SIZE;
     fcb->fcb.size_in_blocks = 1;
     fcb->fcb.is_dir = 0;
 
     // creare blocco successivo
+    int free_block = DiskDriver_getFreeBlock(disk,new_block+1);
+    if(free_block == -1){
+        free(fcb);
+        return NULL;
+    }
+
+    fcb->header.blocks[0] = free_block;
 
     FileBlock* file = (FileBlock*) malloc(sizeof(FileBlock));
     if(file == NULL) {
@@ -83,18 +101,31 @@ FileHandle* SimpleFS_createFile(DirectoryHandle* d, const char* filename) {
     
     // settare num
     file->pos = 0;
-    file->num = ; // inserire blocco libero del disco
+    file->num = new_block; // inserire blocco libero del disco
     int len = BLOCK_SIZE -sizeof(int) - sizeof(int);
     for(int i=0; i<len ; i++) {
         file->data[i] = -1;
     }
 
     // scrivere su disco il file
+    ret = DiskDriver_writeBlock(disk,fcb,new_block,sizeof(FirstFileBlock));
+    if(ret == -1){
+        free(fcb);
+        free(file);
+        return NULL;
+    }
+
+    ret = DiskDriver_writeBlock(disk,file,free_block,sizeof(FileBlock));
+    if(ret == -1){
+        free(fcb);
+        free(file);
+        return NULL;
+    }
 
 
     FileHandle* fh = (FileHandle*) malloc(sizeof(FileHandle));
-    fh->sfs = d->sfs;
-    fh->directory = d->dcb;
+    fh->sfs = fs;
+    fh->directory = fdb;
     fh->current_block = NULL;
     fh->pos_in_file = 0;
     fh->fcb = fcb;
@@ -114,13 +145,15 @@ FileHandle* SimpleFS_openFile(DirectoryHandle* d, const char* filename){
     if(d == NULL || filename == NULL) return NULL;
 
     // directory non vuota
-    if(d->dcb->num_entries > 0) {
+    FirstDirectoryBlock* fdb = d->dcb;
+    DiskDriver* disk = d->sfs->disk;
+    if(fdb->num_entries > 0) {
 
         FileHandle* fh = (FileHandle*) malloc(sizeof(FileHandle));
         if(fh == NULL) return NULL;
 
         fh->sfs = d->sfs;
-        fh->directory = d->dcb;
+        fh->directory = fdb;
         fh->current_block = NULL;
         fh->pos_in_file = 0;
 
