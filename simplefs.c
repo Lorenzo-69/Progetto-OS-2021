@@ -1,4 +1,3 @@
-
 #include "disk_driver.h"
 #include "simplefs.h"
 
@@ -260,7 +259,15 @@ int SimpleFS_read(FileHandle* f, void* data, int size);
 // returns the number of bytes read (moving the current pointer to pos)
 // returns pos on success
 // -1 on error (file too short)
-int SimpleFS_seek(FileHandle* f, int pos);
+int SimpleFS_seek(FileHandle* f, int pos) {
+    FirstFileBlock* ffb = f->fcb;
+    if(pos > ffb->fcb.written_bytes) {
+        return -1;
+    }
+    f->pos_in_file = pos;
+
+    return pos;
+}
 
 //Lorenzo
 // seeks for a directory in d. If dirname is equal to ".." it goes one level up
