@@ -279,7 +279,42 @@ int SimpleFS_seek(FileHandle* f, int pos) {
 // creates a new directory in the current one (stored in fs->current_directory_block)
 // 0 on success
 // -1 on error
-int SimpleFS_mkDir(DirectoryHandle* d, char* dirname);
+int SimpleFS_mkDir(DirectoryHandle* d, char* dirname) {
+    if(d == NULL || dirname == NULL) return -1;
+
+    DiskDriver* disk = d->sfs->disk;
+    FirstDirectoryBlock* fdb = d->dcb;
+
+    // creare blocco nuovo
+
+    FirstDirectoryBlock* dir = (FirstDirectoryBlock*) malloc(sizeof(FirstDirectoryBlock));
+    if(dir == NULL) return -1;
+
+    dir->fcb.block_in_disk = ; // inserire blocco nuovo
+    dir->fcb.directory_block = fdb->fcb.block_in_disk;
+    dir->fcb.is_dir = 1;
+    strncpy(dir->fcb.name, dirname , 128);
+    dir->fcb.size_in_blocks = 0;
+    dir->fcb.size_in_bytes = 0;
+    dir->fcb.written_bytes = 0;
+    dir->num_entries = 0;
+
+    FirstBlockIndex fbi;
+    fbi.pre = -1;
+    fbi.post = -1;
+    for( int i=0; i<90; i++) {
+        fbi.blocks[i] = -1;
+    }
+
+    dir->header = fbi; // settare FirstBlockIndex
+
+    //scrivere su disco
+
+
+    free(dir);
+    return 0;
+    
+}
 
 //Lorenzo
 // removes the file in the current directory
