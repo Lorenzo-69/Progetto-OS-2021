@@ -170,21 +170,38 @@ FileHandle* SimpleFS_openFile(DirectoryHandle* d, const char* filename){
             return NULL;
         }
 
+        if(DiskDriver_readBlock(disk, (void*) dir, fdb->header.blocks[0], sizeof(DirectoryBlock)) == -1){
+            free(fh);
+            free(f);
+            free(dir);
+            return NULL;
+        }
+
         int len = ((BLOCK_SIZE-sizeof(int)-sizeof(int))/sizeof(int));
+        int found = 0;
 
         // cerco il file
-        while (dir != NULL ){
+        while (dir != NULL && !found){
             for( int i=0; i< len; i++){
-                if(dir->file_block[i] > 0 ){
+                if(dir->file_block[i] > 0 && (DiskDriver_readBlock(disk,f,dir->file_blocks[i],sizeof(FirstFileBlock)) != -1)){
                     if(strncmp(f->fcb.name,filename,128) == 0){
                         fh->fcb = f;
+                        found = 1;
                         break;
                     }
                 }
             }
         }
 
-
+        if(found) {
+            free(dir);
+            return fh;
+        } else {
+            free(fh);
+            free(f);
+            free(dir);
+            return NULL;
+        }
         // directory vuota
     } else {
         return NULL
