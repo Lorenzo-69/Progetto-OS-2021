@@ -321,11 +321,13 @@ int SimpleFS_mkDir(DirectoryHandle* d, char* dirname) {
     FirstDirectoryBlock* fdb = d->dcb;
 
     // creare blocco nuovo
+    int new_block = DiskDriver_getFreeBlock(disk,disk->header->first_free_block);
+    if(new_block == -1) return -1;
 
     FirstDirectoryBlock* dir = (FirstDirectoryBlock*) malloc(sizeof(FirstDirectoryBlock));
     if(dir == NULL) return -1;
 
-    dir->fcb.block_in_disk = ; // inserire blocco nuovo
+    dir->fcb.block_in_disk = new_block;
     dir->fcb.directory_block = fdb->fcb.block_in_disk;
     dir->fcb.is_dir = 1;
     strncpy(dir->fcb.name, dirname , 128);
@@ -341,9 +343,31 @@ int SimpleFS_mkDir(DirectoryHandle* d, char* dirname) {
         fbi.blocks[i] = -1;
     }
 
+    DirectoryBlock block;
+    block.index = new_block;
+    block.pos = 0;
+
+    for( int i=0;i<((BLOCK_SIZE-sizeof(int)-sizeof(int))/sizeof(int));i++){
+        block.file_blocks[i] = 0;
+    }
+
+    int free_block = DiskDriver_getFreeBlock(disk, new_block+1);
+    if(free_block == -1){
+        return -1;
+    }
+
+    fbi.blocks[0] = free_block;
+
     dir->header = fbi; // settare FirstBlockIndex
 
     //scrivere su disco
+    if(DiskDriver_writeBlock(disk,dir,new_block,sizeof(FirstDirectoryBlock)) == -1){
+        return -1;
+    }
+
+    if(DiskDriver_writeBlock(disk,dir,free_block,sizeof(DirectoryBlock)) == -1){
+        return -1;
+    }
 
 
     free(dir);
