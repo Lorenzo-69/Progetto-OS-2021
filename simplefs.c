@@ -220,50 +220,68 @@ int SimpleFS_close(FileHandle* f);
 int SimpleFS_write(FileHandle* f, void* data, int size){
 
     FirstFileBlock* ffb = f->fcb;
+    DiskDriver* disk = f->sfs->disk;
     int space = BLOCK_SIZE - sizeof(int)- sizeof(int);
     int written = 0;
+    int pos = f->pos_in_file;
+    int write = size;
 
     DiskDriver* disk = f->sfs->disk;
-
-    FileBlock* fb = (FileBlock*) malloc(sizeof(FileBlock));
-    if(fb == NULL) return -1;
 
     FileBlock* temp = (FileBlock*) malloc(sizeof(FileBlock));
     if(temp == NULL) return -1;
 
     // indice blocco a cui accedere
     int file_index;
-    int index_block = f->pos_in_file - 90*space;
+    int index_block = pos - 90*space;
     if(index_block < 0) {
         index_block = 0;
-        file_index = f->pos_in_file / (90*space);
-        f->pos_in_file = f->pos_in_file - file_index*space;
+        file_index = pos / (90*space);
+        pos = pos - file_index*space;
     } else {
-        
+        index_block = index_block / (90*space);
+        file_index = ((pos - 90*space)-index_block*(90*space))/space;
+        pos = pos - (pos - 90*space)-index_block*(90*space);
     }
 
-    FirstBlockIndex index = f->fcb->index;
+    FirstBlockIndex index = ffb->index;
 
     // vado alla posizione giusta
-    if(f->pos_in_file < space) {
+    for(int i=0; i<index_block; i++){
+        if(DiskDriver_readBlock(disk, (void*)&index, index.post, sizeof(BlockIndex)) == -1){
+            return -1;
+        }
+    }
+
+    // scrivere al primo blocco
+    if(pos < space) {
         // estrarre file block
-
-        if(size <= space-f->pos_in_file) {
-            memcpy(temp->data + f->pos_in_file, (char*)data, size);
-            written += size;
-            if(f->pos_in_file+written > ffb->fcb.written_bytes)
-            ffb->fcb.written_bytes = f->pos_in_file + written;
-
+        if(DiskDriver_readBlock(disk,(void*) temp, index.blocks[file_index],sizeof(FileBlock) == -1){
+            free(temp);
+            return -1;
+        }
+        // basta questo blocco
+        if(write <= space-pos) {
+            memcpy(temp->data + pos, (char*)data, write);
+            written += write;
+            if(pos+written > ffb->fcb.written_bytes){
+                ffb->fcb.written_bytes = pos + written;
+            }
             free(temp);
             return written;
-        }else {
-            memcpy(temp->data + f->pos_in_file, (char*) data, space - f->pos_in_file);
-            written += space- f->pos_in_file;
+        }
+        // non basta questo blocco
+        else {
+            memcpy(temp->data + pos, (char*) data, space - pos);
+            written += space - pos;
             size = size - written;
         }
     } else {
-        
+        free(temp);
+        return -1;
     }
+
+    // devo scrivere nei blocchi successivi
 }
 
 //Lorenzo
