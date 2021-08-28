@@ -281,7 +281,45 @@ int SimpleFS_write(FileHandle* f, void* data, int size){
         return -1;
     }
 
-    // devo scrivere nei blocchi successivi
+    FileBlock* corrente = temp;
+    int position;
+
+    while(written < size && temp != NULL) {
+        if(ffb->fcb.block_in_disk == temp->data) {
+
+        } else {
+
+        }
+        if(position == -1) {
+            free(temp);
+            return -1;
+        }
+
+        if(write <= space - pos) {
+            memcpy(temp->data, (char*)data + written, write);
+            written += write;
+            if(f->pos_in_file+written > ffb->fcb.written_bytes){
+                ffb->fcb.written_bytes = f->pos_in_file+written;
+            }
+            if(DiskDriver_writeBlock(disk, temp, position, sizeof(FileBlock)) == -1){
+                free(temp);
+                return -1;
+            }
+            free(temp);
+            return written;
+        } else {
+            memcpy(temp->data, (char*)data+written, space);
+            written += space;
+            write = size-written;
+            if(DiskDriver_writeBlock(disk, temp,position,sizeof(FileBlock)) == -1){
+                free(temp);
+                return -1;
+            }
+        }
+        corrente = temp;
+    }
+    free(temp);
+    return written;
 }
 
 //Lorenzo
