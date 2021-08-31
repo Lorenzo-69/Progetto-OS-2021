@@ -1,7 +1,65 @@
 #include "disk_driver.h"
+#include <errno.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/mman.h> 
+#include <sys/stat.h>
+#include <sys/types.h>
 
 void DiskDriver_init(DiskDriver* disk, const char* filename, int num_blocks){
-  if (num_blocks <= 0) return;
+  int fd;
+  int bitmap_size = (num_blocks/8) + 1;
+  DiskHeader* disk_header = NULL;
+  
+  //controlla validità input
+  if(disk == NULL || num_blocks <= 0){
+    fprintf(stderr, "Errore: Input non valido. \n");
+		return;
+  }
+
+  //apri o crea file con syscall
+  if (!access(filename, F_OK)){
+    //file esistente
+    fd = open(filename, O_RDWR, 0666);
+    if ( fd != -1 ){
+      fprintf(stderr, "Errore: Impossibile aprire il file. \n");
+      return;
+    }
+    disk_header = (DiskHeader*) mmap(0, sizeof(DiskHeader) + bitmap_size, PROT_READ|PROT_WRITE,MAP_SHARED,fd,0);
+    if (disk_header == MAP_FAILED){
+      fprintf(stderr, "Errore: mappatura di diskheader (file esistente)");
+      close(fd);
+      return;
+    }
+    disk->header = disk_header;
+    disk->bitmap_data = (char*)disk_header + sizeof(DiskHeader);
+    disk->fd = fd;
+  }
+  else{
+    //file non esistente
+    fd = open(filename, O_CREAT | O_RDWR, 0666);
+    if ( fd != -1 ){
+      fprintf(stderr, "Errore: Impossibile aprire il file. \n");
+      return;
+    }
+    disk_header = (DiskHeader*) mmap(0, sizeof(DiskHeader) + bitmap_size, PROT_READ|PROT_WRITE,MAP_SHARED,fd,0);
+    if (disk_header == MAP_FAILED){
+      fprintf(stderr, "Errore: mappatura di disk_header (file non esistente)");
+      close(fd);
+      return;
+    }
+    disk_header->num_blocks = num_blocks;
+    disk_header->bitmap_blocks = num_blocks;
+    disk_header->bitmap_entries = bitmap_size;
+    disk_header->free_blocks = num_blocks;
+    disk_header->first_free_block = 0;
+    disk->header = disk_header;
+    disk->bitmap_data = (char*)disk_header + sizeof(DiskHeader);
+    disk->fd = fd;
+    memset(disk->bitmap_data,0, bitmap_size); 
+  }
   return;
 }
 
