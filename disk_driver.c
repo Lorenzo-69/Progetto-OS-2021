@@ -1,6 +1,7 @@
 #include "disk_driver.h"
 
 void DiskDriver_init(DiskDriver* disk, const char* filename, int num_blocks){
+  if (num_blocks <= 0) return;
   return;
 }
 
