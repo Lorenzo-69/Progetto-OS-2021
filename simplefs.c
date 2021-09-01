@@ -42,7 +42,9 @@ DirectoryHandle* SimpleFS_init(SimpleFS* fs, DiskDriver* disk) {
 // it also clears the bitmap of occupied blocks on the disk
 // the current_directory_block is cached in the SimpleFS struct
 // and set to the top level directory
-void SimpleFS_format(SimpleFS* fs);
+void SimpleFS_format(SimpleFS* fs){
+    
+}
 
 //Stefano
 // creates an empty file in the directory d
