@@ -86,6 +86,29 @@ int DiskDriver_readBlock(DiskDriver* disk, void* dest, int block_num){
 }
 
 int DiskDriver_writeBlock(DiskDriver* disk, void* src, int block_num){
+  //controllo input
+  if ((disk == NULL) || (src == NULL) || (block_num < 0) || (block_num > disk->header->num_blocks - 1)){
+    fprintf(stderr, "Errore: Input non valido. \n");
+    return -1;
+  }
+
+  if(strlen((char*)src) * 8 > BLOCK_SIZE) return -1;
+
+  BitMap bmap;
+  bmap.num_bits = disk->header->bitmap_blocks;
+  bmap.entries = disk->bitmap_data;
+
+  int res = BitMap_read_atIndex(&bmap, block_num);
+  if (res == 0) disk->header->free_blocks--;
+
+  BitMap_set(&bmap, block_num, 1);
+
+  memcpy(disk->bitmap_data + disk->header->bitmap_entries + (block_num * BLOCK_SIZE), src, BLOCK_SIZE);
+
+  //TODO  
+  //flush dati con DiskDriver_Flush
+
+  //agggiorna il primo blocco libero con getFreeBlock
   return 0;
 }
 
