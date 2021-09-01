@@ -1,4 +1,5 @@
 #include "disk_driver.h"
+#include "bitmap.h"
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -64,7 +65,24 @@ void DiskDriver_init(DiskDriver* disk, const char* filename, int num_blocks){
 }
 
 int DiskDriver_readBlock(DiskDriver* disk, void* dest, int block_num){
-  return 0;
+  //controllo input
+  if ((disk == NULL) || (dest == NULL) || (block_num < 0) || (block_num > disk->header->num_blocks - 1)){
+    fprintf(stderr, "Errore: Input non valido. \n");
+    return -1;
+  }
+
+  BitMap bmap;
+  bmap.num_bits = disk->header->bitmap_blocks;
+  bmap.entries = disk->bitmap_data;
+
+  int res = BitMap_read_atIndex(&bmap, block_num);
+  if (res == 1) return 0;
+  else if (res == 0){
+    memcpy(dest, disk->bitmap_data + disk->header->bitmap_entries + (block_num * BLOCK_SIZE), BLOCK_SIZE);
+    return -1;
+  } 
+  fprintf(stderr, "Errore: porta il pc ad  aggiustare!!!");
+  return -2; 
 }
 
 int DiskDriver_writeBlock(DiskDriver* disk, void* src, int block_num){

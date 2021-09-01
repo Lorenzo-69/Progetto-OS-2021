@@ -27,3 +27,7 @@ int BitMap_get(BitMap* bmap, int start, int status);
 //Stefano
 // sets the bit at index pos in bmap to status
 int BitMap_set(BitMap* bmap, int pos, int status);
+
+//aux Valerio
+//controlla il valore di un bit nella bitmap data bmap e indice del bit
+int BitMap_read_atIndex(BitMap* bmap, int index);
