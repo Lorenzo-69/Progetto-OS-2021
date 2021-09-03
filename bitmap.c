@@ -55,15 +55,3 @@ int BitMap_set(BitMap* bmap, int pos, int status){
 
   }
 }
-
-int BitMap_read_atIndex(BitMap* bmap, int index){
-	if(index < 0 || index > bmap->num_bits) return -1;
-	
-	BitMapEntryKey entry = BitMap_blockToIndex(index);
-	int pos = entry.entry_num;
-	int value = (bmap->entries[pos] >> (8-entry.bit_num)) & 0x01;
-	if(value == 1) return 1;
-	else if (value == 0) return 0;
-
-	return -1;
-}

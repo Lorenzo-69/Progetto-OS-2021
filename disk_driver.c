@@ -70,19 +70,15 @@ int DiskDriver_readBlock(DiskDriver* disk, void* dest, int block_num){
     fprintf(stderr, "Errore: Input non valido. \n");
     return -1;
   }
-
+  //preparo bitmap
   BitMap bmap;
   bmap.num_bits = disk->header->bitmap_blocks;
   bmap.entries = disk->bitmap_data;
-
-  int res = BitMap_read_atIndex(&bmap, block_num);
-  if (res == 1) return 0;
-  else if (res == 0){
-    memcpy(dest, disk->bitmap_data + disk->header->bitmap_entries + (block_num * BLOCK_SIZE), BLOCK_SIZE);
-    return -1;
-  } 
-  fprintf(stderr, "Errore: porta il pc ad  aggiustare!!!");
-  return -2; 
+  //se il blocco è vuoto, ritorno -1
+  if(BitMap_get(&bmap, block_num, 0) == block_num) return -1;
+  //altrimenti leggo il blocco
+  memcpy(dest, disk->bitmap_data + disk->header->bitmap_entries + (block_num * BLOCK_SIZE), BLOCK_SIZE);
+  return 0;
 }
 
 int DiskDriver_writeBlock(DiskDriver* disk, void* src, int block_num){
@@ -91,24 +87,23 @@ int DiskDriver_writeBlock(DiskDriver* disk, void* src, int block_num){
     fprintf(stderr, "Errore: Input non valido. \n");
     return -1;
   }
-
   if(strlen((char*)src) * 8 > BLOCK_SIZE) return -1;
-
+  //preparo bitmap
   BitMap bmap;
   bmap.num_bits = disk->header->bitmap_blocks;
   bmap.entries = disk->bitmap_data;
-
-  int res = BitMap_read_atIndex(&bmap, block_num);
-  if (res == 0) disk->header->free_blocks--;
-
+  //decremento il numero di blocchi liberi, se il blocco era libero
+  if (BitMap_get(&bmap,block_num,0) == block_num) disk->header->free_blocks--;
+  //occupo il blocco
   BitMap_set(&bmap, block_num, 1);
-
+  //scrivo da src nel blocco desiderato
   memcpy(disk->bitmap_data + disk->header->bitmap_entries + (block_num * BLOCK_SIZE), src, BLOCK_SIZE);
 
   //TODO  
   //flush dati con DiskDriver_Flush
 
   //agggiorna il primo blocco libero con getFreeBlock
+  disk->header->first_free_block = DiskDriver_getFreeBlock(disk, 0);
   return 0;
 }
 
@@ -117,7 +112,21 @@ int DiskDriver_freeBlock(DiskDriver* disk, int block_num){
 }
 
 int DiskDriver_getFreeBlock(DiskDriver* disk, int start){
-  return 0;
+  //controllo input
+  if ((disk == NULL)){
+    fprintf(stderr, "Errore: Disco non valido. \n");
+    return -1;
+  }
+  //preparo bitmap
+  BitMap bmap;
+  bmap.num_bits = disk->header->bitmap_blocks;
+  bmap.entries = disk->bitmap_data;
+  //altro controllo input
+  if ((start < 0) || (start > disk->header->num_blocks)){
+    fprintf(stderr, "Errore: Punto d'inizio non valido. \n");
+    return -1;
+  }
+  return BitMap_get(&bmap, start, 0);
 }
 
 int DiskDriver_flush(DiskDriver* disk){
