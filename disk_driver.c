@@ -130,5 +130,6 @@ int DiskDriver_getFreeBlock(DiskDriver* disk, int start){
 }
 
 int DiskDriver_flush(DiskDriver* disk){
-  return 0;
+  int dim = sizeof(DiskHeader) + disk->header->bitmap_entries + (disk->header->num_blocks*BLOCK_SIZE);
+  return msync(disk->header, dim, MS_SYNC);
 }
