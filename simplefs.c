@@ -1,5 +1,6 @@
 #include "disk_driver.h"
 #include "simplefs.h"
+#include <string.h>
 
 //Stefano
 // initializes a file system on an already made disk
@@ -43,7 +44,29 @@ DirectoryHandle* SimpleFS_init(SimpleFS* fs, DiskDriver* disk) {
 // the current_directory_block is cached in the SimpleFS struct
 // and set to the top level directory
 void SimpleFS_format(SimpleFS* fs){
-    
+    if(fs == NULL || fs->disk == NULL) {
+        fprintf(stderr,"errore input format");
+        return;
+    }
+    //pulizia disco
+    fs->disk->header->free_blocks = fs->disk->header->num_blocks;
+    fs->disk->header->first_free_block = 0;
+    fs->disk->bitmap_data = (char *) memset((void*)fs->disk->bitmap_data,0,BLOCK_SIZE);
+
+    FirstDirectoryBlock * fdb = (FirstDirectoryBlock *)malloc(sizeof(FirstDirectoryBlock));
+    fdb->num_entries = 0;
+    fdb->header.previous_block = -1;
+    fdb->header.next_block = -1;
+    fdb->header->block_in_file = 0;
+    fdb->fcb.is_dir = 1;
+    fdb->fcb.size_in_blocks = 0;
+    fdb->size_in_bytes = 0;
+    strncpy(&(fdb->fcb.name),1,"/");
+    fdb->fcb.directory_block = -1;
+    fdb->fcb.block_in_disk = 0;
+
+    return;
+
 }
 
 //Stefano

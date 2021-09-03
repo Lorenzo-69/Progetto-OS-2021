@@ -4,15 +4,15 @@
 
 /*these are structures stored on disk*/
 
-/*----IMPLEMENTARE INODE---*/
+
 // header, occupies the first portion of each block in the disk
 // represents a chained list of blocks
-/* typedef struct {
+ typedef struct {
   int previous_block; // chained list (previous block)
   int next_block;     // chained list (next_block)
   int block_in_file; // position in the file, if 0 we have a file control block
 } BlockHeader;
-*/
+
 
 typedef struct {
   int pre;        //predecessore
@@ -44,7 +44,8 @@ typedef struct {
 
 /******************* stuff on disk BEGIN *******************/
 typedef struct {
-  FirstBlockIndex header;
+  //FirstBlockIndex header;
+  BlockHeader header;
   FileControlBlock fcb;
   int num;
 } FirstFileBlock;
@@ -59,7 +60,8 @@ typedef struct {
 
 // this is the first physical block of a directory
 typedef struct {
-  FirstBlockIndex header;
+  //FirstBlockIndex header;
+  BlockHeader header;
   FileControlBlock fcb;
   int num_entries;
 } FirstDirectoryBlock;
