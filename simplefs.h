@@ -7,22 +7,22 @@
 
 // header, occupies the first portion of each block in the disk
 // represents a chained list of blocks
- typedef struct {
+ /*typedef struct {
   int previous_block; // chained list (previous block)
   int next_block;     // chained list (next_block)
   int block_in_file; // position in the file, if 0 we have a file control block
-} BlockHeader;
+} BlockHeader;*/
 
 
 typedef struct {
   int pre;        //predecessore
-  int blocks[90];
+  int blocks[90];  //lista dei blocchi che compongono file/directory
   int post;       //successore
 } FirstBlockIndex;
 
 typedef struct {
   int pre;        //predecessore
-  int blocks[120];
+  int blocks[90];
   int post;       //successore
 } BlockIndex; 
 
@@ -44,8 +44,7 @@ typedef struct {
 
 /******************* stuff on disk BEGIN *******************/
 typedef struct {
-  //FirstBlockIndex header;
-  BlockHeader header;
+  FirstBlockIndex header;
   FileControlBlock fcb;
   int num;
 } FirstFileBlock;
@@ -60,8 +59,7 @@ typedef struct {
 
 // this is the first physical block of a directory
 typedef struct {
-  //FirstBlockIndex header;
-  BlockHeader header;
+  FirstBlockIndex header;
   FileControlBlock fcb;
   int num_entries;
 } FirstDirectoryBlock;

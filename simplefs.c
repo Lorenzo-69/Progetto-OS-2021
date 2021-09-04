@@ -55,18 +55,41 @@ void SimpleFS_format(SimpleFS* fs){
 
     FirstDirectoryBlock * fdb = (FirstDirectoryBlock *)malloc(sizeof(FirstDirectoryBlock));
     fdb->num_entries = 0;
-    fdb->header.previous_block = -1;
-    fdb->header.next_block = -1;
-    fdb->header->block_in_file = 0;
+    fdb->header.pre = -1;
+    fdb->header.post = -1;
+    &(fdb->header.blocks) = (int*) memset(&(fdb->header.blocks),-1,90); //setta tutto l'array a -1
     fdb->fcb.is_dir = 1;
     fdb->fcb.size_in_blocks = 0;
     fdb->size_in_bytes = 0;
-    strncpy(&(fdb->fcb.name),1,"/");
+    strncpy(&(fdb->fcb.name),sizeof(char),"/");
     fdb->fcb.directory_block = -1;
     fdb->fcb.block_in_disk = 0;
 
-    return;
+    DirectoryBlock* db = (DirectoryBlock*)malloc(sizeof(DirectoryBlock));
+    db->index = 0;
+    db->pos = 0;
+    &(db->file_blocks) = memset(&(db->file_blocks),-1,(BLOCK_SIZE-sizeof(int)-sizeof(int))/sizeof(int));
 
+    int block = DiskDriver_getFreeBlock(fs->disk,1);
+
+    if(block == -1){
+        fprintf(stderr,"errore getFreeBlock");
+        return;
+    }    
+    fdb->header.blocks[0] = block;
+
+    int ret = DiskDriver_writeBlock(fs->disk,db,block);
+    if(ret == -1){
+        fprintf(stderr,"errore writeblock");
+        return;
+    }
+
+    int ret = DiskDriver_writeBlock(fs->disk,fdb,0);
+     if(ret == -1){
+        fprintf(stderr,"errore writeblock");
+        return;
+    }
+    return;
 }
 
 //Stefano
@@ -160,7 +183,9 @@ FileHandle* SimpleFS_createFile(DirectoryHandle* d, const char* filename) {
 
 //Lorenzo
 // reads in the (preallocated) blocks array, the name of all files in a directory 
-int SimpleFS_readDir(char** names, DirectoryHandle* d);
+int SimpleFS_readDir(char** names, DirectoryHandle* d){
+    return 0;
+} 
 
 
 //Stefano
