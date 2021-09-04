@@ -132,14 +132,14 @@ FileHandle* SimpleFS_createFile(DirectoryHandle* d, const char* filename) {
     }
 
     // scrivere su disco il file
-    ret = DiskDriver_writeBlock(disk,fcb,new_block,sizeof(FirstFileBlock));
+    ret = DiskDriver_writeBlock(disk,fcb,new_block);
     if(ret == -1){
         free(fcb);
         free(file);
         return NULL;
     }
 
-    ret = DiskDriver_writeBlock(disk,file,free_block,sizeof(FileBlock));
+    ret = DiskDriver_writeBlock(disk,file,free_block);
     if(ret == -1){
         free(fcb);
         free(file);
@@ -195,7 +195,7 @@ FileHandle* SimpleFS_openFile(DirectoryHandle* d, const char* filename){
             return NULL;
         }
 
-        if(DiskDriver_readBlock(disk, (void*) dir, fdb->header.blocks[0], sizeof(DirectoryBlock)) == -1){
+        if(DiskDriver_readBlock(disk, (void*) dir, fdb->header.blocks[0]) == -1){
             free(fh);
             free(f);
             free(dir);
@@ -208,7 +208,7 @@ FileHandle* SimpleFS_openFile(DirectoryHandle* d, const char* filename){
         // cerco il file
         while (dir != NULL && !found){
             for( int i=0; i< len; i++){
-                if(dir->file_block[i] > 0 && (DiskDriver_readBlock(disk,f,dir->file_blocks[i],sizeof(FirstFileBlock)) != -1)){
+                if(dir->file_block[i] > 0 && (DiskDriver_readBlock(disk,f,dir->file_blocks[i]) != -1)){
                     if(strncmp(f->fcb.name,filename,128) == 0){
                         fh->fcb = f;
                         found = 1;
@@ -273,7 +273,7 @@ int SimpleFS_write(FileHandle* f, void* data, int size){
 
     // vado alla posizione giusta
     for(int i=0; i<index_block; i++){
-        if(DiskDriver_readBlock(disk, (void*)&index, index.post, sizeof(BlockIndex)) == -1){
+        if(DiskDriver_readBlock(disk, (void*)&index, index.post) == -1){
             return -1;
         }
     }
@@ -281,7 +281,7 @@ int SimpleFS_write(FileHandle* f, void* data, int size){
     // scrivere al primo blocco
     if(pos < space) {
         // estrarre file block
-        if(DiskDriver_readBlock(disk,(void*) temp, index.blocks[file_index],sizeof(FileBlock) == -1){
+        if(DiskDriver_readBlock(disk,(void*) temp, index.blocks[file_index]) == -1){
             free(temp);
             return -1;
         }
@@ -326,7 +326,7 @@ int SimpleFS_write(FileHandle* f, void* data, int size){
             if(f->pos_in_file+written > ffb->fcb.written_bytes){
                 ffb->fcb.written_bytes = f->pos_in_file+written;
             }
-            if(DiskDriver_writeBlock(disk, temp, position, sizeof(FileBlock)) == -1){
+            if(DiskDriver_writeBlock(disk, temp, position) == -1){
                 free(temp);
                 return -1;
             }
@@ -336,7 +336,7 @@ int SimpleFS_write(FileHandle* f, void* data, int size){
             memcpy(temp->data, (char*)data+written, space);
             written += space;
             write = size-written;
-            if(DiskDriver_writeBlock(disk, temp,position,sizeof(FileBlock)) == -1){
+            if(DiskDriver_writeBlock(disk, temp,position) == -1){
                 free(temp);
                 return -1;
             }
@@ -424,11 +424,11 @@ int SimpleFS_mkDir(DirectoryHandle* d, char* dirname) {
     dir->header = fbi; // settare FirstBlockIndex
 
     //scrivere su disco
-    if(DiskDriver_writeBlock(disk,dir,new_block,sizeof(FirstDirectoryBlock)) == -1){
+    if(DiskDriver_writeBlock(disk,dir,new_block) == -1){
         return -1;
     }
 
-    if(DiskDriver_writeBlock(disk,dir,free_block,sizeof(DirectoryBlock)) == -1){
+    if(DiskDriver_writeBlock(disk,dir,free_block) == -1){
         return -1;
     }
 
@@ -450,7 +450,7 @@ int create_next_file_block(FileBlock* corrente, FileBlock* new, DiskDriver* disk
 	
 	if(index_corrente + 1 == 126){
 		BlockIndex* index = (BlockIndex*)malloc(sizeof(BlockIndex));
-        if(DiskDriver_readBlock(disk,index,corrente->num, sizeof(BlockIndex)) == -1){
+        if(DiskDriver_readBlock(disk,index,corrente->num) == -1){
             free(index);
             index = NULL;
         }
@@ -477,7 +477,7 @@ int create_next_file_block(FileBlock* corrente, FileBlock* new, DiskDriver* disk
         new_index.post = -1;
         for(int i=0; i<126; i++) new_index.blocks[i] = -1;
 		new_index.blocks[0] = block;
-		if(DiskDriver_writeBlock(disk, &new_index, new_block, sizeof(BlockIndex)) == -1){
+		if(DiskDriver_writeBlock(disk, &new_index, new_block) == -1){
 			free(index);
 			return -1;
 		}
@@ -493,7 +493,7 @@ int create_next_file_block(FileBlock* corrente, FileBlock* new, DiskDriver* disk
 	else{
 		
 		BlockIndex* index = (BlockIndex*)malloc(sizeof(BlockIndex));
-        if(DiskDriver_readBlock(disk,index,corrente->num, sizeof(BlockIndex)) == -1){
+        if(DiskDriver_readBlock(disk,index,corrente->num) == -1){
             free(index);
             index = NULL;
         }
@@ -526,7 +526,7 @@ int create_next_file_block_first(FileBlock* corrente, FileBlock* new, DiskDriver
 
     if(index_corrente + 1 == MAX_BLOCKS_FIRST){
         FirstBlockIndex* index = (FirstBlockIndex*)malloc(sizeof(FirstBlockIndex));
-        if(DiskDriver_readBlock(disk, index, corrente->num, sizeof(FirstBlockIndex)) == -1) {
+        if(DiskDriver_readBlock(disk, index, corrente->num) == -1) {
             free(index);
             index = NULL;
         }
@@ -554,7 +554,7 @@ int create_next_file_block_first(FileBlock* corrente, FileBlock* new, DiskDriver
         for( int i=0; i<126;i++) index->blocks[i] = -1;
 
         new_index.blocks[0] = block;
-        if(DiskDriver_writeBlock(disk, &new_index, new_index, sizeof(BlockIndex)) == -1){
+        if(DiskDriver_writeBlock(disk, &new_index, new_index) == -1){
             free(index);
             return -1;
         }
@@ -565,7 +565,7 @@ int create_next_file_block_first(FileBlock* corrente, FileBlock* new, DiskDriver
         return block;
     } else {
         FirstBlockIndex* index = (FirstBlockIndex*)malloc(sizeof(FirstBlockIndex));
-        if(DiskDriver_readBlock(disk, index, corrente->num, sizeof(FirstBlockIndex)) == -1) {
+        if(DiskDriver_readBlock(disk, index, corrente->num) == -1) {
             free(index);
             index = NULL;
         }
