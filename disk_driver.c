@@ -99,16 +99,34 @@ int DiskDriver_writeBlock(DiskDriver* disk, void* src, int block_num){
   //scrivo da src nel blocco desiderato
   memcpy(disk->bitmap_data + disk->header->bitmap_entries + (block_num * BLOCK_SIZE), src, BLOCK_SIZE);
 
-  //TODO  
-  //flush dati con DiskDriver_Flush
-
+  
+  if (DiskDriver_flush(disk) == -1){
+    fprintf(stderr, "Errore: dati non sicronizzati correttamente");
+    return -1;
+  }
   //agggiorna il primo blocco libero con getFreeBlock
   disk->header->first_free_block = DiskDriver_getFreeBlock(disk, 0);
   return 0;
 }
 
 int DiskDriver_freeBlock(DiskDriver* disk, int block_num){
-  return 0;
+  //controllo input
+  if(block_num > disk->header->num_blocks){
+    fprintf(stderr, "Errore: input non valido\n");
+    return -1;
+  }
+  //se il blocco non è già libero, aumento i blocchi liberi nell'header 
+  if (DiskDriver_getFreeBlock(disk, block_num) != block_num) disk->header->free_blocks++;
+  //preparo la bitmap
+  BitMap bitmap;
+	bitmap.num_bits = disk->header->bitmap_entries * 8;
+	bitmap.entries = disk->bitmap_data;
+  //libero il blocco nella bitmap
+  BitMap_set(&bitmap, block_num, 0);
+	disk->bitmap_data = bitmap.entries;
+	DiskDriver_flush(disk);
+  //se necessario, aggiorno il first_free_block
+  if(block_num < disk->header->first_free_block) disk->header->first_free_block = block_num;
 }
 
 int DiskDriver_getFreeBlock(DiskDriver* disk, int start){
