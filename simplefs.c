@@ -184,7 +184,54 @@ FileHandle* SimpleFS_createFile(DirectoryHandle* d, const char* filename) {
 //Lorenzo
 // reads in the (preallocated) blocks array, the name of all files in a directory 
 int SimpleFS_readDir(char** names, DirectoryHandle* d){
-    return 0;
+    if(d==NULL){
+        fprintf(stderr,"directory handle non valido");
+        return -1;
+    }
+    FirstDirectoryBlock* fdb = d->dcb;
+    if(fdb->num_entries == 0){
+        fprintf(stderr,"directory vuota");
+        return 0;
+    }
+
+    if(fdb->num_entries == -1){
+        fprintf(stderr,"errore");
+        return -1;
+    }
+
+    if(names == NULL){
+        names = (char**)malloc(sizeof(char*)* fdb->num_entries); //da capire grandezza names
+        for(int i=0; i<fdb->num_entries i++){
+            names[i] = (char*)malloc(sizeof(char)*128);
+        }
+    }
+    /*creare directory block con malloc senza inizializzare campi
+    Diskdriver_ReadBlock con  (d->sfs->disk, directory block, d->dcb->header.blocks[0])
+    for su (BLOCK_SIZE-sizeof(int)-sizeof(int))/sizeof(int) e controllo se directory block->fileblocks[i] != -1
+    dichiaro first file block
+    readBlock con (d->sfs->disk, first file block, directory block->fileblocks[i])
+    strcpy di first file block -> fcb.name in names[indice]
+    prendo fdb->numentries e controllo se > 1
+    se si controllare i successivi e fare stessi controlli
+    */
+
+    DirectoryBlock * db = (DirectoryBlock*) malloc(sizeof(DirectoryBlock));
+    int ret;
+    ret = Diskdriver_ReadBlock(d->sfs->disk,db,d->dcb->header.blocks[0]);
+    if(ret==-1){
+        fprintf(stderr,"errore readblock 1 in ReadDir");
+        return -1;
+    }
+    FirstFileBlock * ffb = (FirstFileBlock*) = malloc(sizeof(FirstFileBlock));
+    for(int i=0; i<BLOCK_SIZE-sizeof(int)-sizeof(int))/sizeof(int); i++){
+        if(db->file_blocks[i] == -1) continue;
+        ret = DiskDriver_readBlock(d->sfs->disk,ffb,db->file_blocks[i]);
+        if(ret == -1){
+            fprintf(stderr,"errore readblock 2 in ReadDir");
+            return -1;
+        }
+        strcpy(ffb->fcb.name, names[??]); //names è già allocato? quanto grande deve essere?
+    }
 } 
 
 
@@ -396,7 +443,50 @@ int SimpleFS_seek(FileHandle* f, int pos) {
 // seeks for a directory in d. If dirname is equal to ".." it goes one level up
 // 0 on success, negative value on error
 // it does side effect on the provided handle
- int SimpleFS_changeDir(DirectoryHandle* d, char* dirname);
+ int SimpleFS_changeDir(DirectoryHandle* d, char* dirname){
+     /*TODO
+     se dirname == ".." cambio il directory handler passato in input con il directory handler di d->directory
+     cambio il directory handler passato in input con il directory handler della directory dirname
+     sfs rimane lo stesso, cambia d->directory, d->dcb, d->current_block, d->pos_in_dir, d->pos_in_block.
+     */
+     if(dirnam == NULL || d == NULL){
+         fprintf(stderr,"input changeDir non valido");
+         return -1;
+     }
+     if(strcmp(dirname,"..") == 0){
+         if(d->directory == NULL){
+             fprintf(stderr,"errore non esiste directory padre");
+             return -1;
+         }
+         FirstDirectoryBlock * new_parent = malloc(sizeof(FirstDirectoryBlock));
+         FirstDirectoryBlock * new_fdb;
+         DirectoryBlock * new_current_block = malloc(sizeof(DirectoryBlock));
+         int pos_in_dir;
+         int pos_in_block;
+
+        if(DiskDriver_readBlock(d->sfs->disk,new_parent,d->directory->header.blocks[d->directory->fcb.directory_block]) == -1){
+            fprintf(stderr,"errore lettura blocco padre (..)");
+            return -1;
+        }
+        new_fdb = d->directory;
+        if(DiskDriver_readBlock(d->sfs->disk,new_current_block,new_fdb->header.blocks[1]) == -1){
+            fprintf(stderr,"errore lettura blocco corrente (..)");
+            return -1;
+        }
+        pos_in_dir = 1;
+        block_in_dir = 1;
+        d->dcb = new_fdb;
+        d->directory = new_parent;
+        d->current_block = new_current_block;
+        d->pos_in_dir = pos_in_dir;
+        d->pos_in_block = pos_in_block;
+     }
+     else{
+         /*TODO
+         cercare nella directory corrente la directory con nome dirname e aggiornare directory-handler
+         */
+     }
+ }
 
 //Stefano
 // creates a new directory in the current one (stored in fs->current_directory_block)
