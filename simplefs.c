@@ -184,6 +184,7 @@ FileHandle* SimpleFS_createFile(DirectoryHandle* d, const char* filename) {
 //Lorenzo
 // reads in the (preallocated) blocks array, the name of all files in a directory 
 int SimpleFS_readDir(char** names, DirectoryHandle* d){
+
     if(d==NULL){
         fprintf(stderr,"directory handle non valido");
         return -1;
@@ -200,11 +201,13 @@ int SimpleFS_readDir(char** names, DirectoryHandle* d){
     }
 
     if(names == NULL){
-        names = (char**)malloc(sizeof(char*)* fdb->num_entries); //da capire grandezza names
+        names = (char**)malloc(sizeof(char*)* 128); //da capire grandezza names
         for(int i=0; i<fdb->num_entries i++){
             names[i] = (char*)malloc(sizeof(char)*128);
         }
     }
+    int idx_names;
+
     /*creare directory block con malloc senza inizializzare campi
     Diskdriver_ReadBlock con  (d->sfs->disk, directory block, d->dcb->header.blocks[0])
     for su (BLOCK_SIZE-sizeof(int)-sizeof(int))/sizeof(int) e controllo se directory block->fileblocks[i] != -1
@@ -214,24 +217,51 @@ int SimpleFS_readDir(char** names, DirectoryHandle* d){
     prendo fdb->numentries e controllo se > 1
     se si controllare i successivi e fare stessi controlli
     */
-
-    DirectoryBlock * db = (DirectoryBlock*) malloc(sizeof(DirectoryBlock));
     int ret;
-    ret = Diskdriver_ReadBlock(d->sfs->disk,db,d->dcb->header.blocks[0]);
-    if(ret==-1){
-        fprintf(stderr,"errore readblock 1 in ReadDir");
-        return -1;
-    }
-    FirstFileBlock * ffb = (FirstFileBlock*) = malloc(sizeof(FirstFileBlock));
-    for(int i=0; i<BLOCK_SIZE-sizeof(int)-sizeof(int))/sizeof(int); i++){
-        if(db->file_blocks[i] == -1) continue;
-        ret = DiskDriver_readBlock(d->sfs->disk,ffb,db->file_blocks[i]);
-        if(ret == -1){
-            fprintf(stderr,"errore readblock 2 in ReadDir");
+    if(fdb->num_entries == 1){
+        idx_names = 0;
+        DirectoryBlock * db = (DirectoryBlock*) malloc(sizeof(DirectoryBlock));
+        ret = Diskdriver_ReadBlock(d->sfs->disk,db,d->dcb->header.blocks[0]);
+        if(ret==-1){
+            fprintf(stderr,"errore readblock 1 in ReadDir");
             return -1;
         }
-        strcpy(ffb->fcb.name, names[??]); //names è già allocato? quanto grande deve essere?
+        FirstFileBlock * ffb = (FirstFileBlock*) = malloc(sizeof(FirstFileBlock));
+        for(int i=0; i<BLOCK_SIZE-sizeof(int)-sizeof(int))/sizeof(int); i++){
+            if(db->file_blocks[i] == -1) continue;
+            ret = DiskDriver_readBlock(d->sfs->disk,ffb,db->file_blocks[i]);
+            if(ret == -1){
+                fprintf(stderr,"errore readblock 2 in ReadDir");
+                return -1;
+            }
+            strcpy(names[idx_names],ffb->fcb.name);
+            idx_names++;
+        //il campo dati file_blocks all'interno del directory block corrisponde ai primi blocchi di ogni file nella directory
+        }
+    }else{
+        idx_names = 0;
+        DirectoryBlock* db = (DirectoryBlock*)malloc(sizeof(DirectoryBlock));
+        FirstFileBlock * ffb = (FirstFileBlock*) = malloc(sizeof(FirstFileBlock));
+        for(int i=0; i<num_entries; i++){
+            if(d->dcb->header[i] == -1) continue;
+            ret = Diskdriver_ReadBlock(d->sfs->disk,db,d->dcb->header.blocks[i]);
+            if(ret==-1){
+                fprintf(stderr,"errore readblock 3 in ReadDir");
+                return -1;
+            }
+            for(int j=0; j<BLOCK_SIZE-sizeof(int)-sizeof(int))/sizeof(int); j++){
+                if(db->file_blocks[j] == -1) continue;
+                ret = DiskDriver_readBlock(d->sfs->disk,ffb,db->file_blocks[j]);
+                if(ret == -1){
+                    fprintf(stderr,"errore readblock 4 in ReadDir");
+                    return -1;
+                }
+                strcpy(names[idx_names],ffb->fcb.name);
+                idx_names++;
+            }
+        }
     }
+    return 0;
 } 
 
 
@@ -308,7 +338,17 @@ FileHandle* SimpleFS_openFile(DirectoryHandle* d, const char* filename){
 
 //Lorenzo
 // closes a file handle (destroyes it)
-int SimpleFS_close(FileHandle* f);
+int SimpleFS_close(FileHandle* f){
+    if(f==NULL){
+        fprintf(stderr,"fileHandler non valido");
+        return -1;
+    }
+    free(f->fcb);
+    free(f->directory);
+    free(f->current_block);
+    free(f);
+    return 0;
+}
 
 //Stefano
 // writes in the file, at current position for size bytes stored in data
@@ -423,7 +463,30 @@ int SimpleFS_write(FileHandle* f, void* data, int size){
 // writes in the file, at current position size bytes stored in data
 // overwriting and allocating new space if necessary
 // returns the number of bytes read
-int SimpleFS_read(FileHandle* f, void* data, int size);
+int SimpleFS_read(FileHandle* f, void* data, int size){
+    if(f==NULL || size <=0){
+        fprintf(stderr,"errore input non valido");
+    }
+    
+    FileBlock * fb = (FileBlock*) malloc(sizeof(FileBlock));
+    DiskDriver_readBlock(f->sfs->disk, fb, f->fcb->header.blocks[0]);
+    if(size <= strlen(fb->data)){
+        if(data == NULL){
+            data = (char*) malloc(sizeof(char)* size);
+        }
+        strcpy(data,fb->data);
+        return strlen(data);
+    }else{
+        if(data == NULL) data = (char*) malloc(sizeof(char)* size);
+        int block_idx = 1;
+        while(size >= strlen(fb->data)){
+            strcat(data,fb->data);
+            DiskDriver_readBlock(f->sfs->disk,fb,f->fcb->header.blocks[block_idx]);
+            block_idx++;
+        }
+    }
+    return strlen(data);
+}
 
 //Stefano
 // returns the number of bytes read (moving the current pointer to pos)
@@ -443,13 +506,13 @@ int SimpleFS_seek(FileHandle* f, int pos) {
 // seeks for a directory in d. If dirname is equal to ".." it goes one level up
 // 0 on success, negative value on error
 // it does side effect on the provided handle
- int SimpleFS_changeDir(DirectoryHandle* d, char* dirname){
+int SimpleFS_changeDir(DirectoryHandle* d, char* dirname){
      /*TODO
      se dirname == ".." cambio il directory handler passato in input con il directory handler di d->directory
      cambio il directory handler passato in input con il directory handler della directory dirname
      sfs rimane lo stesso, cambia d->directory, d->dcb, d->current_block, d->pos_in_dir, d->pos_in_block.
      */
-     if(dirnam == NULL || d == NULL){
+     if(dirname == NULL || d == NULL){
          fprintf(stderr,"input changeDir non valido");
          return -1;
      }
@@ -485,7 +548,27 @@ int SimpleFS_seek(FileHandle* f, int pos) {
          /*TODO
          cercare nella directory corrente la directory con nome dirname e aggiornare directory-handler
          */
-     }
+         FirstDirectoryBlock* fdb_ctrl = (FirstDirectoryBlock*) malloc(sizeof(FirstDirectoryBlock));
+         DirectoryBlock* db = (DirectoryBlock*) malloc(sizeof(DirectoryBlock));
+         for(int i=0; d->dcb->num_entries; i++){
+             DiskDriver_readBlock(d->sfs->disk,db,d->dcb->header[i]);
+             for(int j=0; j<BLOCK_SIZE-sizeof(int)-sizeof(int)/sizeof(int); i++){
+                 if(db->file_blocks[j] == -1) continue;
+                 DiskDriver_readBlock(d->sfs->disk,fdb_ctrl,db->file_blocks[j]);
+                 //controllo se nome corrisponde e se è una directory
+                 if(strcmp(dirname,fdb_ctrl->fcb.name) == 0 && fdb_ctrl->fcb.is_dir == 1){
+                     d->directory = d->dcb;
+                     d->dcb = fdb_ctrl;
+                     d->current_block = db;
+                     d->pos_in_dir = db->pos;
+                     d->pos_in_block = db->idx;
+                     return 0;
+                    }
+                }
+
+            }
+        }
+        return 0;
  }
 
 //Stefano
