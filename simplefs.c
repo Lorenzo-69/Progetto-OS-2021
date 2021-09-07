@@ -552,7 +552,7 @@ int SimpleFS_changeDir(DirectoryHandle* d, char* dirname){
          DirectoryBlock* db = (DirectoryBlock*) malloc(sizeof(DirectoryBlock));
          for(int i=0; d->dcb->num_entries; i++){
              DiskDriver_readBlock(d->sfs->disk,db,d->dcb->header[i]);
-             for(int j=0; j<BLOCK_SIZE-sizeof(int)-sizeof(int)/sizeof(int); i++){
+             for(int j=0; j<(BLOCK_SIZE-sizeof(int)-sizeof(int))/sizeof(int); i++){
                  if(db->file_blocks[j] == -1) continue;
                  DiskDriver_readBlock(d->sfs->disk,fdb_ctrl,db->file_blocks[j]);
                  //controllo se nome corrisponde e se è una directory
@@ -640,7 +640,52 @@ int SimpleFS_mkDir(DirectoryHandle* d, char* dirname) {
 // removes the file in the current directory
 // returns -1 on failure 0 on success
 // if a directory, it removes recursively all contained files
-int SimpleFS_remove(SimpleFS* fs, char* filename);
+int SimpleFS_remove(DirectoryHandle* d, char* filename){
+    if(d==NULL || filename == NULL) return -1;
+    char** dir_list = NULL;
+    int ret;
+    ret = SimpleFS_readDir(dir_list,d);
+    if(ret == -1) return -1;
+    int check = 0;
+    for(int i=0; i<128;i++){
+        if(dir_list != NULL && strcmp(filename,dir_list[i]) == 0){
+            check = 1;
+            break;
+        }
+    }
+    if(check == 0) return -1; //file non presente nella directory
+
+    FirstDirectoryBlock * start = d->dcb;
+    DirectoryBlock * current_db;
+    FirstFileBlock * current_ffb;
+    FileBlock * current_fb;
+
+    for(int i=0; i<num_entries; i++){
+        DiskDriver_readBlock(d->sfs->disk, current_db, start->header.blocks[i]);
+        for(int j=0; j<(BLOCK_SIZE-sizeof(int)-sizeof(int))/sizeof(int); j++){
+            DiskDriver_readBlock(d->sfs->disk,current_ffb,current_db->file_blocks[j]);
+            if(strcmp(filename,current_ffb->fcb.name) == 0){ //check name and if dir
+                if(current_ffb->fcb.is_dir == 0){ // se è un file
+                    //eliminare file
+                    for(int k=0; k<sizeof(current_ffb->header.blocks)/sizeof(int); k++){
+                        DiskDriver_freeBlock(d->sfs->disk,current_ffb->header.blocks[k]);
+                    }
+                    DiskDriver_freeBlock(d->sfs->disk,current_db->file_blocks[j]);
+                    return 0;
+                }else if(current_ffb->fcb.is_dir == 1){ // se è una directory
+                    //entrare dentro la directory e fare chiamata ricorsiva con il directory handler aggiornato
+                    DirectoryHandle * d1 = d;
+                    SimpleFS_changeDir(d1, filename);
+                    SimpleFS_remove(d1,filename);
+                }
+                return 0;
+            }
+        }
+
+    }
+
+
+}
 
 
 int create_next_file_block(FileBlock* corrente, FileBlock* new, DiskDriver* disk){
