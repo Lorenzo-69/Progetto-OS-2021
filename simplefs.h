@@ -168,6 +168,6 @@ int SimpleFS_mkDir(DirectoryHandle* d, char* dirname);
 // if a directory, it removes recursively all contained files
 int SimpleFS_remove(DirectoryHandle* d, char* filename); //sostituito il SimpleFS in input con DirectoryHandle
 
+int create_next_file_block(FileBlock* corrente, FileBlock* new, DiskDriver* disk);
 
-  
-
+int create_next_file_block_first(FileBlock* corrente, FileBlock* new, DiskDriver* disk);

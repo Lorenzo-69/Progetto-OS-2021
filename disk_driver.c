@@ -8,6 +8,7 @@
 #include <sys/mman.h> 
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <string.h>
 
 void DiskDriver_init(DiskDriver* disk, const char* filename, int num_blocks){
   int fd;
@@ -24,7 +25,7 @@ void DiskDriver_init(DiskDriver* disk, const char* filename, int num_blocks){
   if (!access(filename, F_OK)){
     //file esistente
     fd = open(filename, O_RDWR, 0666);
-    if ( fd != -1 ){
+    if ( fd == -1 ){
       fprintf(stderr, "Errore: Impossibile aprire il file. \n");
       return;
     }
@@ -41,7 +42,7 @@ void DiskDriver_init(DiskDriver* disk, const char* filename, int num_blocks){
   else{
     //file non esistente
     fd = open(filename, O_CREAT | O_RDWR, 0666);
-    if ( fd != -1 ){
+    if ( fd == -1 ){
       fprintf(stderr, "Errore: Impossibile aprire il file. \n");
       return;
     }
