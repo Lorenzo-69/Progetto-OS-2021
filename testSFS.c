@@ -17,7 +17,7 @@
 int test;
 int use_global_test = FALSE;
 int use_file_for_test = 0;
-const char* filename = "./disk_driver_test8.txt";
+const char* filename = "./disk_driver_test24.txt";
 
 void stampa_in_binario(char* stringa) {
 	int i, j;
@@ -44,7 +44,7 @@ int space_in_dir(int * file_blocks, int dim) {
 	return free_spaces;
 }
 
-int main(int agc, char** argv) {
+int main(int argc, char** argv) {
 
 	if(!test) {
 		printf("\nCosa vuoi testare?\n1 = BitMap\n2 = DiskDriver\n3 = SimpleFS\n\n>>> ");
@@ -52,6 +52,7 @@ int main(int agc, char** argv) {
 	}
 
 	if(test == 1) {
+
 
 		// Test BitMap_blockToIndex
 		int num = 765;
@@ -129,7 +130,7 @@ int main(int agc, char** argv) {
 		// Test DiskDriver_readBlock
 		printf("\n\n+++ Test DiskDriver_readBlock()");
 		void * dest = malloc(BLOCK_SIZE);
-		printf("\n    Controlliamo tramite una readBlock(dest, 4)   => %d", DiskDriver_readBlock(&disk, dest, 4,sizeof(dest)));
+		printf("\n    Controlliamo tramite una readBlock(dest, 4)   => %d", DiskDriver_readBlock(&disk, dest, 4,strlen("Ciao")));
         //printf("\n    Controlliamo tramite una readBlock(dest, 3)   => %d", DiskDriver_readBlock(&disk, dest, 3,sizeof(dest)));
         //printf("\n    Controlliamo tramite una readBlock(dest, 6)   => %d", DiskDriver_readBlock(&disk, dest, 6,sizeof(dest))); //prima era 4
 		printf("\n    Dopo la readBlock, la dest contiene           => %s", (char *) dest);
@@ -169,13 +170,15 @@ int main(int agc, char** argv) {
 		// Test SimpleFS_createFile
 		printf("\n\n+++ Test SimpleFS_createFile()");
 		int i, num_file = 4;
+		char names [4][255]= {"prova1.txt", "prova2.txt", "prova3.txt", "prova4.txt"};
 		for(i = 0; i < num_file; i++) {
-			char filename_created[255];
-			sprintf(filename, "prova_%d.txt", directory_handle->dcb->num_entries);
-			if(SimpleFS_createFile(directory_handle,filename) != NULL) {
-				printf("\n    File %s creato correttamente", filename);
+			//char filename_created[255];
+			//sprintf(filename_created, "prova_%d.txt", directory_handle->dcb->num_entries);
+			
+			if(SimpleFS_createFile(directory_handle,names[i]) != NULL) {
+				printf("\n    File %s creato correttamente", names[i]);
 			}else{
-				printf("\n    Errore nella creazione di %s", filename);
+				printf("\n    Errore nella creazione di %s", names[i]);
 			}
 		}
 		printf("\n    BitMap => ");
@@ -198,15 +201,17 @@ int main(int agc, char** argv) {
 	 	// Test SimpleFS_readDir
 		printf("\n\n+++ Test SimpleFS_readDir()");
 		printf("\n    Nella cartella ci sono %d elementi:", directory_handle->dcb->num_entries);
-		char ** elenco2 = malloc(directory_handle->dcb->num_entries * 255);
-		SimpleFS_readDir(elenco2, directory_handle);
-		for(i = 0; i < directory_handle->dcb->num_entries; i++) {
+		//char ** elenco2 = malloc(directory_handle->dcb->num_entries * 255);
+		char elenco2 [directory_handle->dcb->num_entries][255];
+		//SimpleFS_readDir(elenco2, directory_handle);
+		/*for(i = 0; i < directory_handle->dcb->num_entries; i++) {
 			printf("\n    > %s", elenco2[i]);
-		}
+		}*/
 
 	 	// Test SimpleFS_openFile
 		printf("\n\n+++ Test SimpleFS_openFile()");
-		char nome_file[255] = "prova_1.txt";
+		//char nome_file[255] = "prova_1.txt";
+		const char* nome_file = "prova_1.txt";
 		FileHandle * file_handle = malloc(sizeof(FileHandle));
 		file_handle = SimpleFS_openFile(directory_handle, nome_file);
 		ret = file_handle == NULL ? -1 : 0;
@@ -328,7 +333,6 @@ int main(int agc, char** argv) {
 		}
 		printf("\n    BitMap => ");
 		stampa_in_binario(disk.bitmap_data);
-
 	}
 	printf("\n\n");
 }

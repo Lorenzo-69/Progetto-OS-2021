@@ -22,7 +22,7 @@ typedef struct {
 
 typedef struct {
   int pre;        //predecessore
-  int blocks[90];
+  int blocks[120];
   int post;       //successore
 } BlockIndex; 
 
@@ -54,7 +54,7 @@ typedef struct {
 typedef struct {
   int pos;       //posizione
   int num;
-  char  data[BLOCK_SIZE-sizeof(int)-sizeof(int)];
+  char data[BLOCK_SIZE-sizeof(int)-sizeof(int)];
 } FileBlock;
 
 // this is the first physical block of a directory

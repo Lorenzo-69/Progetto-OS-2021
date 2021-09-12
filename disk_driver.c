@@ -79,29 +79,46 @@ void DiskDriver_init(DiskDriver* disk, const char* filename, int num_blocks){
 int DiskDriver_readBlock(DiskDriver* disk, void* dest, int block_num,int size){
   int fd = disk->fd;
   //controllo input
-  if ((disk == NULL) || (dest == NULL) || (block_num < 0) || (block_num > disk->header->num_blocks - 1)){
-    fprintf(stderr, "Errore: Input non valido. \n");
+  if(disk == NULL) {
+    printf("\n disk null");
     return -1;
   }
+  if(dest == NULL) {
+     printf("dest == null");
+     return -1;
+   }
+   if(block_num < 0){
+     printf("\n block_num < 0");
+     return -1;
+   }
+  /* if(block_num >= disk->header->num_blocks) {
+     printf("\n block_num > disk");
+     return -1;
+   }*/
+  /*if ((disk == NULL) || (dest == NULL) || (block_num < 0) || (block_num >= disk->header->bitmap_blocks)){
+    fprintf(stderr, "Errore: Input non valido. readblock\n");
+    return -1;
+  }*/
   //preparo bitmap
   BitMap bmap;
   bmap.num_bits = disk->header->bitmap_blocks;
   bmap.entries = disk->bitmap_data;
   //se il blocco è vuoto, ritorno -1
   if(BitMap_get(&bmap, block_num, 0) == block_num){
-    printf("era questo if");
+    printf("era questo if, la Bitmap_get ritorna %d", BitMap_get(&bmap, block_num, 0));
     return -1;
   } 
   //altrimenti leggo il blocco
-  memcpy(dest, disk->bitmap_data + disk->header->bitmap_entries + (block_num * BLOCK_SIZE), BLOCK_SIZE);
-  /*int ret;
+  //memcpy(dest, disk->bitmap_data + disk->header->bitmap_entries + (block_num * BLOCK_SIZE), BLOCK_SIZE);
+  int ret;
   int readb = 0;
-   off_t offset = lseek(fd,sizeof(DiskHeader) + disk->header->bitmap_entries + (block_num*BLOCK_SIZE),SEEK_SET);
-     if(offset==-1){
-       printf("errore lseek");
-       return -1;
-     }
+  off_t offset = lseek(fd,sizeof(DiskHeader) + disk->header->bitmap_entries + (block_num*BLOCK_SIZE),SEEK_SET);
+  if(offset==-1){
+    printf("errore lseek");
+    return -1;
+  }
   while(readb < size){
+    // printf("\n readb %d", readb);
     //printf("while read\n");
     ret = read(fd,dest+readb,size-readb);
     if(ret == -1){
@@ -109,7 +126,7 @@ int DiskDriver_readBlock(DiskDriver* disk, void* dest, int block_num,int size){
       return -1;
     }
     readb += ret;
-  }*/
+  }
   return 0;
 }
 
@@ -118,7 +135,7 @@ int DiskDriver_writeBlock(DiskDriver* disk, void* src, int block_num, int size){
   int fd = disk->fd;
   //controllo input
   if ((disk == NULL) || (src == NULL) || (block_num < 0) || (block_num > disk->header->num_blocks - 1) || size < 0){
-    fprintf(stderr, "Errore: Input non valido. \n");
+    fprintf(stderr, "Errore: Input non valido. writeblock\n");
     return -1;
   }
   if(strlen((char*)src) * 8 > BLOCK_SIZE) return -1;
@@ -144,8 +161,8 @@ int DiskDriver_writeBlock(DiskDriver* disk, void* src, int block_num, int size){
      printf("errore set bitmap");
      return -1;
    } 
-   memcpy(disk->bitmap_data + disk->header->bitmap_entries + (block_num * BLOCK_SIZE), src, BLOCK_SIZE);
-   /*
+  // memcpy(disk->bitmap_data + disk->header->bitmap_entries + (block_num * BLOCK_SIZE), src, BLOCK_SIZE);
+   
 
      //printf("era quest'altro if");
      disk->header->first_free_block = DiskDriver_getFreeBlock(disk,0); //???
@@ -156,18 +173,14 @@ int DiskDriver_writeBlock(DiskDriver* disk, void* src, int block_num, int size){
        return -1;
      }
      while(written < size){
-       printf("\nera il while della write\n");
        ret = write(fd,src+written,size-written);
        if(ret == -1){
          printf("\nerrore write writeBlock()\n");
          return -1;
        }
        written += ret;
-       printf("%d bytes written\n",written);*/
-     
-     
-   
 
+     }
  }
 
 
@@ -177,15 +190,15 @@ int DiskDriver_writeBlock(DiskDriver* disk, void* src, int block_num, int size){
     fprintf(stderr, "Errore: dati non sicronizzati correttamente");
     return -1;
   }
-  //agggiorna il primo blocco libero con getFreeBlock
-  disk->header->first_free_block = DiskDriver_getFreeBlock(disk, 0);*/
+  //agggiorna il primo blocco libero con getFreeBlock*/
+  disk->header->first_free_block = DiskDriver_getFreeBlock(disk, 0);
   return 0;
 }
 
 int DiskDriver_freeBlock(DiskDriver* disk, int block_num){
   //controllo input
   if(block_num > disk->header->num_blocks){
-    fprintf(stderr, "Errore: input non valido\n");
+    fprintf(stderr, "Errore: input non valido free\n");
     return -1;
   }
 
