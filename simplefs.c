@@ -8,37 +8,39 @@
 // returns a handle to the top level directory stored in the first block
 DirectoryHandle* SimpleFS_init(SimpleFS* fs, DiskDriver* disk) {
     if(fs == NULL || disk == NULL) return NULL;
+	
+	fs->disk = disk;
+	FirstDirectoryBlock* fdb = (FirstDirectoryBlock*)malloc(sizeof(FirstDirectoryBlock));
+	if(fdb == NULL){
+		fprintf(stderr, "Errore creazione FirstDIrectoryBlock SimpleFs_Init.\n");
+		return NULL;
+	}	
+	
+	int res = DiskDriver_readBlock(disk,fdb,0, sizeof(FirstDirectoryBlock));
+	if(res == 0){ 
+		fprintf(stderr,"Errore: readBlock del FirstDirectoryBlock SImpleFS_init\n");
+		free(fdb);
+		return NULL;
+	}			
+	
+	DirectoryHandle* dir = (DirectoryHandle*)malloc(sizeof(DirectoryHandle));
+	if(dir == NULL){
+		fprintf(stderr, "Errore creazione directory_handle SimpleFS_init.\n");
+		return NULL;
+	}
 
-    fs->disk = disk;
-
-    FirstDirectoryBlock* fdb = (FirstDirectoryBlock*) malloc(sizeof(FirstDirectoryBlock));
-    if(fdb == NULL){
-        printf("\nfdb = NULL");
-        return NULL;
-    }
-
-    // controllare che il blocco sia disponibile
-    int res = DiskDriver_readBlock(disk,fdb,0,sizeof(FirstDirectoryBlock)); 
-    if(res == 0){
-        printf("\nerrore readBlock");
-        free(fdb);
-        return NULL;
-    }
-
-    DirectoryHandle* dir = (DirectoryHandle*) malloc(sizeof(DirectoryHandle));
-    if(dir == NULL) {
-        printf("\ndir = NULL");
-        return NULL;
-    }
-
-    dir->sfs = fs;
-    dir->dcb = fdb;
-    dir->directory = NULL;
-    dir->current_block = NULL;
-    dir->pos_in_dir = 0;
-    dir->pos_in_block = 0;
-
-    return dir;
+	if(fs->disk->header->first_free_block == 0){
+		SimpleFS_format(fs);
+	}
+	
+	dir->sfs = fs;
+	dir->dcb = fdb;
+	dir->directory = NULL;
+	dir->current_block = NULL;
+	dir->pos_in_dir = 0;
+	dir->pos_in_block = 0;
+	
+	return dir;
 }
 
 //Lorenzo
