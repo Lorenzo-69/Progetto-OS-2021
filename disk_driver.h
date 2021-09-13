@@ -55,3 +55,6 @@ int DiskDriver_getFreeBlock(DiskDriver* disk, int start);
 //Valerio
 // writes the data (flushing the mmaps)
 int DiskDriver_flush(DiskDriver* disk);
+
+// update Block in position block_num
+int DiskDriver_updateBlock(DiskDriver* disk, void* src, int block_num, int size);
