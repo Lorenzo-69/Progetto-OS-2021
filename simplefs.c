@@ -440,8 +440,6 @@ int SimpleFS_close(FileHandle* f){
         return -1;
     }
     free(f->fcb);
-    free(f->directory);
-    free(f->current_block);
     free(f);
     return 0;
 }
