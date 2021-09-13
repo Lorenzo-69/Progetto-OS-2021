@@ -177,6 +177,31 @@ int DiskDriver_freeBlock(DiskDriver* disk, int block_num){
   return 0;
 }
 
+int DiskDriver_updateBlock(DiskDriver* disk, void* src, int block_num, int size){
+	if(block_num >= disk->header->bitmap_blocks || block_num < 0 || src == NULL || disk == NULL ){
+		fprintf(stderr,"Errore: impossibile aggiornare il blocco DiskDriver_updateBlock\n");
+    return -1;
+	}
+  int fd = disk->fd;
+    
+	off_t offset = lseek(fd, sizeof(DiskHeader)+disk->header->bitmap_entries+(block_num*BLOCK_SIZE), SEEK_SET);	
+	if(offset == -1){
+		fprintf(stderr,"Errore: lseek DiskDriver_updateBlock\n");
+		return -1;
+	}
+		
+	int ret, written = 0;
+	while(written < size){																		
+		ret = write(fd,src+written,size-written);
+      if(ret == -1){
+        fprintf(stderr,"Errore: errore write DiskDriver_updateBlock\n");
+        return -1;
+      }
+      written += ret;					
+	}
+  return 0;
+}
+
 int DiskDriver_getFreeBlock(DiskDriver* disk, int start){
   //controllo input
   if ((disk == NULL)){
