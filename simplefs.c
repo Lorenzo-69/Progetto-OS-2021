@@ -51,7 +51,7 @@ DirectoryHandle* SimpleFS_init(SimpleFS* fs, DiskDriver* disk) {
 // and set to the top level directory
 void SimpleFS_format(SimpleFS* fs){
     if(fs == NULL || fs->disk == NULL) {
-        fprintf(stderr,"errore input format");
+        fprintf(stderr,"Errore: input SimpleFS_format");
         return;
     }
     //pulizia disco
@@ -59,47 +59,51 @@ void SimpleFS_format(SimpleFS* fs){
     fs->disk->header->first_free_block = 0;
     fs->disk->bitmap_data = (char *) memset((void*)fs->disk->bitmap_data,0,BLOCK_SIZE);
 
-    FirstDirectoryBlock * fdb = (FirstDirectoryBlock *)malloc(sizeof(FirstDirectoryBlock));
-    fdb->num_entries = 0;
-    fdb->header.pre = -1;
-    fdb->header.post = -1;
-    for (int i=0; i<90; i++){
-        fdb->header.blocks[i] = -1;
+	int size = fs->disk->header->bitmap_entries;
+    FirstDirectoryBlock  fdb = {0};
+	fdb.fcb.is_dir = 1;
+    fdb.fcb.size_in_blocks = 0;
+    fdb.fcb.size_in_bytes = 0;
+    strcpy(fdb.fcb.name,"/");
+    fdb.fcb.directory_block = -1;
+    fdb.fcb.block_in_disk = 0;
+	memset(fs->disk->bitmap_data,'\0',size);
+
+
+
+    fdb.num_entries = 0;
+    fdb.header.pre = -1;
+    fdb.header.post = -1;
+    for (int i=0; i<87; i++){
+        fdb.header.blocks[i] = -1;
     }
-    fdb->fcb.is_dir = 1;
-    fdb->fcb.size_in_blocks = 0;
-    fdb->fcb.size_in_bytes = 0;
-    strcpy(fdb->fcb.name,"/");
-    fdb->fcb.directory_block = -1;
-    fdb->fcb.block_in_disk = 0;
 
     DirectoryBlock* db = (DirectoryBlock*)malloc(sizeof(DirectoryBlock));
     db->index = 0;
     db->pos = 0;
     for (int i=0; i<(BLOCK_SIZE-sizeof(int)-sizeof(int))/sizeof(int); i++){
-        db->file_blocks[i] = -1;
+        db->file_blocks[i] = 0;
     }
     
     int block = DiskDriver_getFreeBlock(fs->disk,1);
 
     if(block == -1){
-        fprintf(stderr,"errore getFreeBlock");
+        fprintf(stderr,"Errore: getfreeblock SImpleFS_format");
         return;
     }    
-    fdb->header.blocks[0] = block;
+    fdb.header.blocks[0] = block;
 
-    int ret = DiskDriver_writeBlock(fs->disk,db,block,sizeof(DirectoryBlock));
-    if(ret == -1){
-        fprintf(stderr,"errore writeblock");
-        return;
-    }
-
-    ret = DiskDriver_writeBlock(fs->disk,fdb,0,sizeof(FirstDirectoryBlock));
-     if(ret == -1){
-        fprintf(stderr,"errore writeblock");
-        return;
-    }
-    return;
+	if(DiskDriver_writeBlock(fs->disk,&fdb,0,sizeof(FirstDirectoryBlock)) != -1){
+		if(DiskDriver_writeBlock(fs->disk,db,block,sizeof(DirectoryBlock)) != -1){
+			return;
+		} else {
+			fprintf(stderr,"Errore: writeBlock 2 SimpleFS_format");
+			return;
+		}
+	} else {
+		fprintf(stderr,"Errore: writeBlock 1 SimpleFS_format");
+		return;
+	}
 }
 
 //Stefano
