@@ -221,143 +221,61 @@ FileHandle* SimpleFS_createFile(DirectoryHandle* d, const char* filename) {
 // reads in the (preallocated) blocks array, the name of all files in a directory 
 int SimpleFS_readDir(char** names, DirectoryHandle* d){
 
-    if(d==NULL){
-        fprintf(stderr,"directory handle non valido");
-        return -1;
-    }
-    FirstDirectoryBlock* fdb = d->dcb;
-    if(fdb->num_entries == 0){
-        fprintf(stderr,"directory vuota");
-        return 0;
-    }
+    if(names == NULL || d == NULL){
+		fprintf(stderr, "Errore: Input non validi SImpleFS_readDir.\n");
+		return -1;
+	}
+	
+	DiskDriver* disk = d->sfs->disk;
+	FirstDirectoryBlock *fdb = d->dcb;
+	
+	if(fdb->num_entries <= 0){
+		fprintf(stderr, "Errore directory vuota SimpleFS_readDir.\n");
+		return -1;
+	}
+	
+	int i, dim = (BLOCK_SIZE-sizeof(int)-sizeof(int))/sizeof(int), num_tot = 0;
+	FirstFileBlock ffb_to_check; 
+	
+	DirectoryBlock* db = (DirectoryBlock*)malloc(sizeof(DirectoryBlock));
+	if(db == NULL) return -1;
+	
+	if(DiskDriver_readBlock(disk,db,d->dcb->header.blocks[0],sizeof(DirectoryBlock)) != -1){
+		for (i=0; i<dim; i++){	
+			if (db->file_blocks[i]> 0 && DiskDriver_readBlock(disk, &ffb_to_check, db->file_blocks[i], sizeof(FirstFileBlock)) != -1){ 
+				strncpy(names[num_tot],ffb_to_check.fcb.name, 128);
+				num_tot++;
+			}
+		}
+	
+		if (fdb->num_entries > i){	
+		
+			if(fdb->fcb.block_in_disk == db->index)
+				db = next_block_directory(db, disk,0);
+			else
+				db = next_block_directory(db, disk,1);
 
-    if(fdb->num_entries == -1){
-        fprintf(stderr,"errore");
-        return -1;
-    }
-
-
-    if(names == NULL){
-        /*names = (char**)malloc(sizeof(char*)* 128); //da capire grandezza names
-        for(int i=0; i<fdb->num_entries; i++){
-            names[i] = (char*)malloc(sizeof(char)*128);
-        }*/
-        printf("errore lista nomi non allocata\n");
-        return -1;
-    }
-
-    int idx_names = 0;
-    DirectoryBlock * db = (DirectoryBlock*) malloc(sizeof(DirectoryBlock));
-    if (db == NULL) return -1;
-
-    FirstFileBlock* ffb = (FirstFileBlock*) malloc(sizeof(FirstFileBlock));
-    if (ffb == NULL) return -1;
-
-    int ret = DiskDriver_readBlock(d->sfs->disk,db,d->dcb->header.blocks[0], sizeof(DirectoryBlock));
-    if (ret == -1){
-        return -1;
-    }
-    int dim = (BLOCK_SIZE-sizeof(int)-sizeof(int))/sizeof(int);
-
-    for (int i = 0; i<dim; i++) {
-        //printf("\n primo for");
-        //printf("\n file_blocks %d", db->file_blocks[i]);
-        if(db->file_blocks[i] != -1) {
-            //printf("\n primo if");
-            if(DiskDriver_readBlock(d->sfs->disk, ffb, db->file_blocks[i],sizeof(FirstFileBlock)) != -1){
-                //printf("\n name %s", ffb->fcb.name);
-                //printf("\n secondo if");
-                //printf("\n %s",names[idx_names]);
-                strncpy(names[idx_names],ffb->fcb.name,128);
-                //printf("\n %s", ffb->fcb.name);
-                //idx_names++;
-            }
-        }
-    }
-
-    if(fdb->num_entries > 1) {
-        for(int i = 1; i<fdb->num_entries; i++) {
-            if(d->dcb->header.blocks[i] > 0) {
-                if(DiskDriver_readBlock(d->sfs->disk,db,d->dcb->header.blocks[i],sizeof(DirectoryBlock)) != -1){
-                    for(int j=0; j<dim; j++){
-                        if(db->file_blocks[j] > 0) {
-                            if(DiskDriver_readBlock(d->sfs->disk,ffb,db->file_blocks[j],sizeof(FirstFileBlock)) != -1){
-                            strncpy(names[idx_names],ffb->fcb.name,128);
-                            printf("\n %s", ffb->fcb.name);
-                            //idx_names++;
-                            }
-                        } 
-                    }
-                } 
-            }
-        }
-    }
-    
-
-    /*creare directory block con malloc senza inizializzare campi
-    Diskdriver_ReadBlock con  (d->sfs->disk, directory block, d->dcb->header.blocks[0])
-    for su (BLOCK_SIZE-sizeof(int)-sizeof(int))/sizeof(int) e controllo se directory block->fileblocks[i] != -1
-    dichiaro first file block
-    readBlock con (d->sfs->disk, first file block, directory block->fileblocks[i])
-    strcpy di first file block -> fcb.name in names[indice]
-    prendo fdb->numentries e controllo se > 1
-    se si controllare i successivi e fare stessi controlli
-    */
-    /*int ret;
-    if(fdb->num_entries == 1){
-        printf("\n ciao 3");
-        idx_names = 0;
-        DirectoryBlock * db = (DirectoryBlock*) malloc(sizeof(DirectoryBlock));
-        ret = DiskDriver_readBlock(d->sfs->disk,db,d->dcb->header.blocks[0],sizeof(DirectoryBlock));
-        if(ret==-1){
-            fprintf(stderr,"errore readblock 1 in ReadDir");
-            return -1;
-        }
-        printf("\n ciao 4");
-        FirstFileBlock * ffb = (FirstFileBlock*) malloc(sizeof(FirstFileBlock));
-        for(int i=0; i<(BLOCK_SIZE-sizeof(int)-sizeof(int))/sizeof(int); i++){
-            if(db->file_blocks[i] == -1) continue;
-            ret = DiskDriver_readBlock(d->sfs->disk,ffb,db->file_blocks[i],sizeof(FirstFileBlock));
-            if(ret == -1){
-                fprintf(stderr,"errore readblock 2 in ReadDir");
-                return -1;
-            }
-            strncpy(names[idx_names],ffb->fcb.name,128);
-            idx_names++;
-        //il campo dati file_blocks all'interno del directory block corrisponde ai primi blocchi di ogni file nella directory
-        }
-        printf("\n ciao 5");
-    }else{
-        idx_names = 0;
-        DirectoryBlock* db = (DirectoryBlock*)malloc(sizeof(DirectoryBlock));
-        FirstFileBlock * ffb = (FirstFileBlock*) malloc(sizeof(FirstFileBlock));
-        printf("\n ciao 6");
-        for(int i=0; i<d->dcb->num_entries; i++){
-            if(d->dcb->header.blocks[i] == -1) continue;
-            printf("\n ciao readblokc");
-            ret = DiskDriver_readBlock(d->sfs->disk,db,d->dcb->header.blocks[i],sizeof(DirectoryBlock));
-            printf("la read torna %d\n",ret);
-            if(ret==-1){
-                fprintf(stderr,"errore readblock 3 in ReadDir");
-                return -1;
-            }
-            printf("\n ciao 7");
-            for(int j=0; j<(BLOCK_SIZE-sizeof(int)-sizeof(int))/sizeof(int); j++){
-                if(db->file_blocks[j] == -1) continue;
-                ret = DiskDriver_readBlock(d->sfs->disk,ffb,db->file_blocks[j],sizeof(FirstFileBlock));
-                if(ret == -1){
-                    fprintf(stderr,"errore readblock 4 in ReadDir");
-                    return -1;
-                }
-                strncpy(names[idx_names],ffb->fcb.name,128);
-                idx_names++;
-            }
-            printf("\n ciao 8");
-        }
-        printf("\n ciao 9");
-    }
-    printf("\n ciao finale");*/
-    return 0;
+			while (db != NULL){	 
+				for (i=0; i<dim; i++){	 
+					if (db->file_blocks[i]> 0 && DiskDriver_readBlock(disk, &ffb_to_check, db->file_blocks[i], sizeof(FirstFileBlock)) != -1){ 
+						strncpy(names[num_tot],ffb_to_check.fcb.name, 128);
+						num_tot++;
+					}
+				}
+				if(fdb->fcb.block_in_disk == db->index)
+					db = next_block_directory(db, disk,0);
+				else
+					db = next_block_directory(db, disk,1);
+			}
+		}
+		free(db);
+		return 0;
+	} else{
+		fprintf(stderr,"Errore impossibile leggere directory block.\n");
+		free(db);
+		return -1;
+	}
+	
 } 
 
 
@@ -984,4 +902,84 @@ int AssignDirectory(DiskDriver* disk, FirstDirectoryBlock* fdb, int ffb, int fb)
 	
 	free(db);
 	return 0;		
+}
+
+DirectoryBlock* next_block_directory(DirectoryBlock* directory,DiskDriver* disk,int flag){
+	int current_position = directory->pos;
+	DirectoryBlock* next_directory = (DirectoryBlock*)malloc(sizeof(DirectoryBlock));
+	if(flag == 1){
+		BlockIndex* index = (BlockIndex*) malloc(sizeof(BlockIndex));
+		if (DiskDriver_readBlock(disk, index, directory->index, sizeof(BlockIndex)) == -1) return NULL;
+		if((current_position +1) != 120){
+			if(DiskDriver_readBlock(disk, next_directory, index->blocks[current_position + 1], sizeof(DirectoryBlock)) == -1){
+				fprintf(stderr,"Errore: readBlock directory next_block_directory\n");
+				free(next_directory);
+				free(index);
+				return NULL;
+			}
+		free(index);
+		free(directory);
+
+		}else{
+			if(index->post == -1){
+				fprintf(stderr,"Errore blocco successivo non esiste next_block_directory\n");
+				free(index);
+				return NULL;
+			}
+			BlockIndex* next = (BlockIndex*)malloc(sizeof(BlockIndex));
+			if(DiskDriver_readBlock(disk, next, index->post, sizeof(BlockIndex)) == -1){
+				fprintf(stderr,"Errore readBlock next_block_directory\n");
+				free(next);
+				free(index);
+				return NULL;
+			}
+			if(DiskDriver_readBlock(disk, next_directory, next->blocks[0], sizeof(DirectoryBlock)) == -1){
+				fprintf(stderr,"Errore readBlock next_block_directory\n");
+				free(next_directory);
+				free(index);
+				free(next);
+				return NULL;
+			}
+			free(index);
+			free(next);
+		}
+	}else{
+		FirstBlockIndex* index = (FirstBlockIndex*) malloc(sizeof(FirstBlockIndex));
+		if(DiskDriver_readBlock(disk, index, directory->index, sizeof(FirstBlockIndex)) == -1){
+			return NULL;
+		}
+		if((current_position + 1) == 87){
+			if(index->post == -1){
+				fprintf(stderr,"Errore blocco successivo non esiste next_block_directory\n");
+				free(index);
+				return NULL;
+			}
+			BlockIndex* next = (BlockIndex*)malloc(sizeof(BlockIndex));
+			if(DiskDriver_readBlock(disk, next, index->post, sizeof(BlockIndex)) == -1){
+				fprintf(stderr,"Errore readBlock next_block_directory\n");
+				free(next);
+				free(index);
+				return NULL;
+			}
+			if(DiskDriver_readBlock(disk, next_directory, next->blocks[0], sizeof(DirectoryBlock)) == -1){
+				fprintf(stderr,"Errore readBlock next_block_directory\n");
+				free(next_directory);
+				free(index);
+				free(next);
+				return NULL;
+			}
+			free(index);
+			free(next);
+			}
+		else{
+			if(DiskDriver_readBlock(disk, next_directory, index->blocks[current_position + 1], sizeof(DirectoryBlock)) == -1){
+				fprintf(stderr,"Errore readBlock next_block_directory\n");
+				free(next_directory);
+				free(index);
+				return NULL;
+			}
+			free(index);
+		}
+	}
+	return next_directory;
 }
