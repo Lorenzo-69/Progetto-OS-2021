@@ -1080,3 +1080,105 @@ DirectoryBlock* next_block_directory(DirectoryBlock* directory,DiskDriver* disk,
 	}
 	return next_directory;
 }
+
+FileBlock* next_block_file(FileBlock* file,DiskDriver* disk, int flag){
+
+	if(flag == 1){
+		BlockIndex* index = (BlockIndex*)malloc(sizeof(BlockIndex));
+		if(DiskDriver_readBlock(disk, index, file->num, sizeof(BlockIndex)) == -1){
+			fprintf(stderr,"Error in get_block_index_file.\n");
+			free(index);
+			return NULL;
+		}	
+	
+		int current_position = file->pos;
+	 
+		if((current_position + 1) == 126){
+			if(index->post == -1){
+				fprintf(stderr,"Error in get next block file\n");
+				free(index);
+				return NULL;
+			}
+			BlockIndex* next = (BlockIndex*)malloc(sizeof(BlockIndex));
+			if(DiskDriver_readBlock(disk, next, index->post, sizeof(BlockIndex)) == -1){
+				fprintf(stderr,"Errore nella get next block file\n");
+				free(index);
+				free(next);
+				return NULL;
+			}
+			FileBlock* next_file = (FileBlock*)malloc(sizeof(FileBlock));
+			if(DiskDriver_readBlock(disk, next_file, next->blocks[0], sizeof(FileBlock)) == -1){
+				fprintf(stderr,"Errore nella get next block file\n");
+				free(index);
+				free(next);
+				free(next_file);
+				return NULL;
+			}
+			free(index);
+			free(next);
+		
+			return next_file;
+		}
+		else{
+		FileBlock* next_file = (FileBlock*)malloc(sizeof(FileBlock));
+		if(DiskDriver_readBlock(disk, next_file, index->blocks[current_position + 1], sizeof(FileBlock)) == -1){
+			fprintf(stderr,"Errore nella get next block file\n");
+			free(next_file);
+			free(index);
+			return NULL;
+		}
+		free(index);
+
+		return next_file;
+		}
+	}else{
+		FirstBlockIndex* index = (FirstBlockIndex*)malloc(sizeof(FirstBlockIndex));
+		if(DiskDriver_readBlock(disk, index, file->num, sizeof(FirstBlockIndex)) == -1){
+			fprintf(stderr,"Error in get_block_index_file.\n");
+			free(index);
+			return NULL;
+		}
+	
+		int current_position = file->pos;
+	 
+		if((current_position + 1) == 87){
+			if(index->post == -1){
+				fprintf(stderr,"Error in get next block file\n");
+				free(index);
+				return NULL;
+			}
+			BlockIndex* next = (BlockIndex*)malloc(sizeof(BlockIndex));
+			if(DiskDriver_readBlock(disk, next, index->post, sizeof(BlockIndex)) == -1){
+				fprintf(stderr,"Errore nella get next block file\n");
+				free(index);
+				free(next);
+				return NULL;
+			}
+			FileBlock* next_file = (FileBlock*)malloc(sizeof(FileBlock));
+			if(DiskDriver_readBlock(disk, next_file, next->blocks[0], sizeof(FileBlock)) == -1){
+				fprintf(stderr,"Errore nella get next block file\n");
+				free(index);
+				free(next);
+				free(next_file);
+				return NULL;
+			}
+			free(index);
+			free(next);
+		
+			return next_file;
+		}
+		else{
+			FileBlock* next_file = (FileBlock*)malloc(sizeof(FileBlock));
+			if(DiskDriver_readBlock(disk, next_file, index->blocks[current_position + 1], sizeof(FileBlock)) == -1){
+				fprintf(stderr,"Errore nella get next block file\n");
+				free(next_file);
+				free(index);
+				return NULL;
+			}
+			free(index);
+
+			return next_file;
+		}
+	}
+
+}
