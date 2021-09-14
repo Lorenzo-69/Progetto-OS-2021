@@ -777,49 +777,71 @@ int SimpleFS_mkDir(DirectoryHandle* d, char* dirname) {
 // returns -1 on failure 0 on success
 // if a directory, it removes recursively all contained files
 int SimpleFS_remove(DirectoryHandle* d, char* filename){
-    if(d==NULL || filename == NULL) return -1;
-    char** dir_list = NULL;
-    int ret;
-    ret = SimpleFS_readDir(dir_list,d);
-    if(ret == -1) return -1;
-    int check = 0;
-    for(int i=0; i<128;i++){
-        if(dir_list != NULL && strcmp(filename,dir_list[i]) == 0){
-            check = 1;
-            break;
-        }
-    }
-    if(check == 0) return -1; //file non presente nella directory
 
-    FirstDirectoryBlock * start = d->dcb;
-    DirectoryBlock * current_db;
-    FirstFileBlock * current_ffb;
-    FileBlock * current_fb;
+	if(d == NULL || filename == NULL) return -1;
 
-    for(int i=0; i<d->dcb->num_entries; i++){
-        DiskDriver_readBlock(d->sfs->disk, current_db, start->header.blocks[i],sizeof(DirectoryBlock));
-        for(int j=0; j<(BLOCK_SIZE-sizeof(int)-sizeof(int))/sizeof(int); j++){
-            DiskDriver_readBlock(d->sfs->disk,current_ffb,current_db->file_blocks[j],sizeof(FirstFileBlock));
-            if(strcmp(filename,current_ffb->fcb.name) == 0){ //check name and if dir
-                if(current_ffb->fcb.is_dir == 0){ // se è un file
-                    //eliminare file
-                    for(int k=0; k<sizeof(current_ffb->header.blocks)/sizeof(int); k++){
-                        DiskDriver_freeBlock(d->sfs->disk,current_ffb->header.blocks[k]);
-                    }
-                    DiskDriver_freeBlock(d->sfs->disk,current_db->file_blocks[j]);
-                    return 0;
-                }else if(current_ffb->fcb.is_dir == 1){ // se è una directory
-                    //entrare dentro la directory e fare chiamata ricorsiva con il directory handler aggiornato
-                    DirectoryHandle * d1 = d;
-                    SimpleFS_changeDir(d1, filename);
-                    SimpleFS_remove(d1,filename);
-                }
-                return 0;
-            }
-        }
+    // directory non vuota
+    FirstDirectoryBlock* fdb = d->dcb;
+    DiskDriver* disk = d->sfs->disk;
+	if(fdb->num_entries > 0) {
+   	FileHandle* fh = (FileHandle*) malloc(sizeof(FileHandle));
+   	if(fh == NULL) return -1;
 
+    fh->sfs = d->sfs;
+    fh->directory = fdb;
+    fh->pos_in_file = 0;
+    FirstFileBlock* f = (FirstFileBlock*) malloc(sizeof(FirstFileBlock));
+    if(f == NULL) {
+        free(f);
+        return -1;
     }
 
+    // estrarre primo directory block
+    DirectoryBlock* dir = (DirectoryBlock*) malloc(sizeof(DirectoryBlock));
+    if(dir == NULL) {
+        free(f);
+        free(dir);
+        return -1;
+    }
+
+
+    if(DiskDriver_readBlock(disk, dir, fdb->header.blocks[0],sizeof(DirectoryBlock)) == -1){
+        free(fh);
+        free(f);
+        free(dir);
+        return -1;
+    }
+
+    int len = ((BLOCK_SIZE-sizeof(int)-sizeof(int))/sizeof(int));
+    int found = 0;
+
+
+    // cerco il file
+    while (dir != NULL && !found){
+        for( int i=0; i< len; i++){
+            if(dir->file_blocks[i] > 0) {
+				if(DiskDriver_readBlock(disk,f,dir->file_blocks[i],sizeof(FirstFileBlock)) != -1) {
+					if(strncmp(f->fcb.name,filename,128) == 0){
+                       	DiskDriver_freeBlock(disk,dir->file_blocks[i]);
+						FirstBlockIndex index = f->header;
+						for(int p=0;p<87;p++){
+							if(f->header.blocks[p] != -1){
+								DiskDriver_freeBlock(disk,f->header.blocks[p]);
+							}
+						}
+                       	found = 1;
+                       	break;
+                   	}
+				}
+			}
+                   
+        }
+		if(fdb->fcb.block_in_disk == dir->index)
+			dir = next_block_directory(dir, disk,0);
+		else
+			dir = next_block_directory(dir, disk,1);
+        }
+	}
 
 }
 
