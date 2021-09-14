@@ -294,7 +294,6 @@ FileHandle* SimpleFS_openFile(DirectoryHandle* d, const char* filename){
 
         fh->sfs = d->sfs;
         fh->directory = fdb;
-        fh->current_block = NULL;
         fh->pos_in_file = 0;
 
         FirstFileBlock* f = (FirstFileBlock*) malloc(sizeof(FirstFileBlock));
@@ -311,7 +310,8 @@ FileHandle* SimpleFS_openFile(DirectoryHandle* d, const char* filename){
             return NULL;
         }
 
-        if(DiskDriver_readBlock(disk, (void*) dir, fdb->header.blocks[0],sizeof(DirectoryBlock)) == -1){
+
+        if(DiskDriver_readBlock(disk, dir, fdb->header.blocks[0],sizeof(DirectoryBlock)) == -1){
             free(fh);
             free(f);
             free(dir);
@@ -321,17 +321,25 @@ FileHandle* SimpleFS_openFile(DirectoryHandle* d, const char* filename){
         int len = ((BLOCK_SIZE-sizeof(int)-sizeof(int))/sizeof(int));
         int found = 0;
 
+
         // cerco il file
         while (dir != NULL && !found){
             for( int i=0; i< len; i++){
-                if(dir->file_blocks[i] > 0 && (DiskDriver_readBlock(disk,f,dir->file_blocks[i],sizeof(FirstFileBlock)) != -1)){
-                    if(strncmp(f->fcb.name,filename,128) == 0){
-                        fh->fcb = f;
-                        found = 1;
-                        break;
-                    }
-                }
+                if(dir->file_blocks[i] > 0) {
+					if(DiskDriver_readBlock(disk,f,dir->file_blocks[i],sizeof(FirstFileBlock)) != -1) {
+						if(strncmp(f->fcb.name,filename,128) == 0){
+                        	fh->fcb = f;
+                        	found = 1;
+                        	break;
+                    	}
+					}
+				}
+                    
             }
+			if(fdb->fcb.block_in_disk == dir->index)
+				dir = next_block_directory(dir, disk,0);
+			else
+				dir = next_block_directory(dir, disk,1);
         }
 
         if(found) {
