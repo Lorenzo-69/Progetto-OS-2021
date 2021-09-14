@@ -504,28 +504,104 @@ int SimpleFS_write(FileHandle* f, void* data, int size){
 // overwriting and allocating new space if necessary
 // returns the number of bytes read
 int SimpleFS_read(FileHandle* f, void* data, int size){
-    if(f==NULL || size <=0){
-        fprintf(stderr,"errore input non valido");
-    }
-    
-    FileBlock * fb = (FileBlock*) malloc(sizeof(FileBlock));
-    DiskDriver_readBlock(f->sfs->disk, fb, f->fcb->header.blocks[0],sizeof(FileBlock));
-    if(size <= strlen(fb->data)){
-        if(data == NULL){
-            data = (char*) malloc(sizeof(char)* size);
-        }
-        strcpy(data,fb->data);
-        return strlen(data);
-    }else{
-        if(data == NULL) data = (char*) malloc(sizeof(char)* size);
-        int block_idx = 1;
-        while(size >= strlen(fb->data)){
-            strcat(data,fb->data);
-            DiskDriver_readBlock(f->sfs->disk,fb,f->fcb->header.blocks[block_idx],sizeof(FileBlock));
-            block_idx++;
-        }
-    }
-    return strlen(data);
+    FirstFileBlock* first_file = f->fcb;
+	DiskDriver* my_disk = f->sfs->disk;
+	int i;
+	
+	int off = f->pos_in_file;															
+	int written_bytes = first_file->fcb.written_bytes;												
+	
+	if(size+off > written_bytes){																
+		fprintf(stderr,"Error in SimpleFS_read: could not read, size+off > written_bytes.\n");
+		return -1;
+	}
+	
+	int bytes_read = 0;
+	int to_read = size;
+	int space_file_block = BLOCK_SIZE - sizeof(int) - sizeof(int);
+	
+	FileBlock* file_block_tmp = (FileBlock*)malloc(sizeof(FileBlock));
+	if(file_block_tmp == NULL){
+		fprintf(stderr,"Error in SimpleFS_read: malloc file_block_tmp.\n");
+		return -1;
+	}
+	
+	int file_index_pos;
+	int index_block_ref = off - 126*space_file_block;
+	if(index_block_ref < 0){
+		index_block_ref = 0;
+		file_index_pos = off / (87*space_file_block);
+		off = off - file_index_pos * space_file_block;
+	}
+	else{
+		index_block_ref = index_block_ref / (87*space_file_block);
+		file_index_pos = ((off - 126*space_file_block)-index_block_ref*(87*space_file_block))/space_file_block;
+		off = off - (off - 126*space_file_block)-index_block_ref*(87*space_file_block);
+	}
+		
+	FirstBlockIndex index = first_file->header;
+		
+	for(i=0;i<index_block_ref;i++){
+		if(DiskDriver_readBlock(my_disk, (void*)&index, index.post, sizeof(BlockIndex)) == -1){
+			fprintf(stderr,"Errore readBlock.\n");
+			return -1;
+		}
+	}
+		
+	if(DiskDriver_readBlock(my_disk, (void*)file_block_tmp, index.blocks[file_index_pos], sizeof(FileBlock)) == -1){
+		fprintf(stderr,"Errore impossibile leggere file block in read.\n");
+		return -1;
+	}
+	
+	if(off < space_file_block && to_read <= (space_file_block-off)){	
+		memcpy(data, file_block_tmp->data + off, to_read);							
+		bytes_read += to_read;
+		to_read = size - bytes_read;
+		f->pos_in_file += bytes_read;
+		free(file_block_tmp);
+		return bytes_read;
+	}
+
+	else if(off < space_file_block && to_read > (space_file_block-off)){
+		memcpy(data, file_block_tmp->data + off, space_file_block-off);																	
+		bytes_read += space_file_block-off;
+		to_read = size - bytes_read;
+	}
+
+	else{
+		return -1;
+	}
+
+	
+	while(bytes_read < size && file_block_tmp != NULL){
+		if(first_file->fcb.block_in_disk == file_block_tmp->num)
+			file_block_tmp =  next_block_file(file_block_tmp,my_disk,0);
+		else
+			file_block_tmp =  next_block_file(file_block_tmp,my_disk,1);
+		
+		if(file_block_tmp == NULL){
+			f->pos_in_file += bytes_read;
+			free(file_block_tmp);
+			return bytes_read;
+		}
+		else if(to_read <= space_file_block){											
+			memcpy(data+bytes_read, file_block_tmp->data, to_read);													
+			bytes_read += to_read;
+			to_read = size - bytes_read;
+			f->pos_in_file += bytes_read;
+			free(file_block_tmp);
+			return bytes_read;
+		}
+		else{										
+			memcpy(data+bytes_read, file_block_tmp->data, space_file_block);																	
+			bytes_read += space_file_block;
+			to_read = size - bytes_read;
+		}
+	}
+
+	free(file_block_tmp);
+	f->pos_in_file += bytes_read;
+	return bytes_read;
 }
 
 //Stefano
