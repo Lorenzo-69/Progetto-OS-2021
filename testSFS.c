@@ -17,7 +17,7 @@
 int test;
 int use_global_test = FALSE;
 int use_file_for_test = 0;
-const char* filename = "./disk_driver_test6.txt";
+const char* filename = "./disk_driver_test22.txt";
 
 void stampa_in_binario(char* stringa) {
 	int i, j;
@@ -263,7 +263,6 @@ int main(int argc, char** argv) {
 			return 0;
 		}
 		
-		printf("\n Entro nella directory "pluto");
 		char namesPluto [5][255]= {"pluto1.txt", "pluto2.txt", "pluto3.txt", "pluto4.txt", "pluto5.txt"};
 		SimpleFS_changeDir(directory_handle, "pluto");
 		for(i=0; i<5; i++) {
@@ -271,9 +270,8 @@ int main(int argc, char** argv) {
 		}
 		printf("\n\n    Ho aggiunto %d files in \"pluto\"", 5);
 
-		
 		dim = (directory_handle->dcb->num_entries/2);
-		printf("\n\n+++ Test SimpleFS_readDir() directory pluto");
+		printf("\n\n+++ Test SimpleFS_readDir()");
 		printf("\n    Nella cartella ci sono %d elementi:", dim);
 		char** elencopluto = (char**)malloc((directory_handle->dcb->num_entries) * sizeof(char*));
 		for (i = 0; i < (directory_handle->dcb->num_entries); i++) {
@@ -283,8 +281,7 @@ int main(int argc, char** argv) {
 		for(i = 0; i < dim; i++) {
 			printf("\n    > %s", elencopluto[i]);
 		}
-		
-		printf("\n Torno alla directory padre");
+
 		SimpleFS_changeDir(directory_handle, "..");
 		printf("\n    BitMap => ");
 		stampa_in_binario(disk.bitmap_data);
@@ -303,9 +300,10 @@ int main(int argc, char** argv) {
 
 		// Test SimpleFS_remove
 		/*printf("\n\n+++ Test SimpleFS_remove() [cartella]");
-		strcpy(nome_file, "pluto");
-		ret = SimpleFS_remove(directory_handle, nome_file);
-		printf("\n    SimpleFS_remove(file_handle, \"%s\") => %d", nome_file, ret);
+		char* directory = "pluto";
+		//strcpy(nome_file, "pluto");
+		ret = SimpleFS_remove(directory_handle, directory);
+		printf("\n    SimpleFS_remove(file_handle, \"%s\") => %d", directory, ret);
 		if(ret >= 0) {
 			printf("\n    Cancellazione del file avvenuta correttamente");
 		}else{
@@ -316,7 +314,7 @@ int main(int argc, char** argv) {
 		stampa_in_binario(disk.bitmap_data);*/
 
 		// Test SimpleFS_remove
-		/*printf("\n\n+++ Test SimpleFS_remove() [file]");
+		printf("\n\n+++ Test SimpleFS_remove() [file]");
 		char* nome = "prova2.txt";
 		ret = SimpleFS_remove(directory_handle, nome);
 		printf("\n    SimpleFS_remove(file_handle, \"%s\") => %d", nome, ret);
@@ -327,7 +325,7 @@ int main(int argc, char** argv) {
 			return 0;
 		}
 		printf("\n    BitMap => ");
-		stampa_in_binario(disk.bitmap_data);*/
+		stampa_in_binario(disk.bitmap_data);
 	}
 	printf("\n\n");
 }
