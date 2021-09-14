@@ -32,6 +32,7 @@ void DiskDriver_init(DiskDriver* disk, const char* filename, int num_blocks){
     disk_header = (DiskHeader*) mmap(0, sizeof(DiskHeader)+bitmap_size, PROT_READ|PROT_WRITE,MAP_SHARED,fd,0);
     if(disk_header == MAP_FAILED){
 		  fprintf(stderr,"Errore: mmap fallita DiskDriver_init \n");
+      close(fd);
       exit(-1);
     }
 
@@ -55,6 +56,7 @@ void DiskDriver_init(DiskDriver* disk, const char* filename, int num_blocks){
     disk_header = (DiskHeader*) mmap(0, sizeof(DiskHeader)+bitmap_size, PROT_READ|PROT_WRITE,MAP_SHARED,fd,0);
     if(disk_header == MAP_FAILED){
 		  fprintf(stderr,"Erroer: mmap fallita DIskDriver_init\n");
+      close(fd);
       exit(-1);
     }
     disk->header = disk_header;
@@ -234,3 +236,4 @@ int DiskDriver_getFreeBlock(DiskDriver* disk, int start){
 int DiskDriver_flush(DiskDriver* disk){
   int dim = sizeof(DiskHeader) +(disk->header->num_blocks/8) +1;
   return msync(disk->header, dim, MS_SYNC);
+}
