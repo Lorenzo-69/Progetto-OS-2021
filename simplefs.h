@@ -16,13 +16,13 @@
 
 typedef struct {
   int pre;        //predecessore
-  int blocks[90];  //lista dei blocchi che compongono file/directory
+  int blocks[87];  //lista dei blocchi che compongono file/directory
   int post;       //successore
 } FirstBlockIndex;
 
 typedef struct {
   int pre;        //predecessore
-  int blocks[120];
+  int blocks[126];
   int post;       //successore
 } BlockIndex; 
 
@@ -168,6 +168,10 @@ int SimpleFS_mkDir(DirectoryHandle* d, char* dirname);
 // if a directory, it removes recursively all contained files
 int SimpleFS_remove(DirectoryHandle* d, char* filename); //sostituito il SimpleFS in input con DirectoryHandle
 
-int create_next_file_block(FileBlock* corrente, FileBlock* new, DiskDriver* disk);
+int next_file_block(FileBlock* corrente, FileBlock* new, DiskDriver* disk, int flag);
 
-int create_next_file_block_first(FileBlock* corrente, FileBlock* new, DiskDriver* disk);
+DirectoryBlock* next_block_directory(DirectoryBlock* directory,DiskDriver* disk,int flag);
+
+int AssignDirectory(DiskDriver* disk, FirstDirectoryBlock* fdb, int pos_ffb, int pos_fb);
+
+FileBlock* next_block_file(FileBlock* file,DiskDriver* disk, int flag);
