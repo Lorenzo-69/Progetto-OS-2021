@@ -17,7 +17,7 @@
 int test;
 int use_global_test = FALSE;
 int use_file_for_test = 0;
-const char* filename = "./disk_driver_test22.txt";
+const char* filename = "./disk_driver_test1.txt";
 
 void stampa_in_binario(char* stringa) {
 	int i, j;
@@ -116,16 +116,20 @@ int main(int argc, char** argv) {
 		printf("\n\n+++ Test DiskDriver_writeBlock()");
 		printf("\n+++ Test DiskDriver_flush()");
 		printf("\n    Prima => ");
+		//int lunghezza = strlen(testo);
 		stampa_in_binario(bitmap.entries);
-		printf("\n    Il risultato della writeBlock(\"Ciao\", 4) è %d", DiskDriver_writeBlock(&disk, "Ciao", 4,strlen("Ciao")));
+		printf("\n    Il risultato della writeBlock(\"Ciao\", 4) è %d", DiskDriver_writeBlock(&disk, "Ciao", 4,4));
 		printf("\n    Dopo  => ");
 		stampa_in_binario(bitmap.entries);
 
 		// Test DiskDriver_readBlock
 		printf("\n\n+++ Test DiskDriver_readBlock()");
+		
 		void * dest = malloc(BLOCK_SIZE);
-		printf("\n    Controlliamo tramite una readBlock(dest, 4)   => %d", DiskDriver_readBlock(&disk, dest, 4,strlen("Ciao")));
+		printf("\n    Controlliamo tramite una readBlock(dest, 4)   => %d", DiskDriver_readBlock(&disk, dest, 4,4));
 		printf("\n    Dopo la readBlock, la dest contiene           => %s", (char *) dest);
+
+		free(dest);
 
 		// Test DiskDriver_freeBlock
 		printf("\n\n+++ Test DiskDriver_freeBlock()");
@@ -199,10 +203,15 @@ int main(int argc, char** argv) {
 			printf("\n    > %s", elenco2[i]);
 		}
 
+		for (i = 0; i < (directory_handle->dcb->num_entries); i++) {
+			free(elenco2[i]);
+		}
+		free(elenco2);
+
 	 	// Test SimpleFS_openFile
 		printf("\n\n+++ Test SimpleFS_openFile()");
 		const char* nome_file = "prova1.txt";
-		FileHandle * file_handle = malloc(sizeof(FileHandle));
+		FileHandle * file_handle;
 		file_handle = SimpleFS_openFile(directory_handle, nome_file);
 		ret = file_handle == NULL ? -1 : 0;
 		printf("\n    SimpleFS_openFile(directory_handle, \"%s\") => %d", nome_file, ret);
@@ -215,12 +224,11 @@ int main(int argc, char** argv) {
 
 	 	// Test SimpleFS_write
 		printf("\n\n+++ Test SimpleFS_write()");
-		char stringa[21];
-		strcpy(stringa, "Nel mezzo del cammin");
-		int len = strlen(stringa);
-		ret = SimpleFS_write(file_handle, stringa, strlen(stringa));
-		printf("\n    SimpleFS_write(file_handle, stringa, %ld) => %d", strlen(stringa), ret);
-		if(ret == strlen(stringa)) {
+		char* stringa = "Nel mezzo del cammin";
+		//int len = strlen(stringa);
+		ret = SimpleFS_write(file_handle, stringa, 20);
+		printf("\n    SimpleFS_write(file_handle, stringa, %d) => %d", 20, ret);
+		if(ret == 20) {
 			printf("\n    Scrittura avvenuta correttamente");
 		}else{
 			printf("\n    Errore nella scrittura del file\n");
@@ -230,9 +238,10 @@ int main(int argc, char** argv) {
 
 	 	// Test SimpleFS_read
 		printf("\n\n+++ Test SimpleFS_read()");
-		char data[20];
-		printf("\n    SimpleFS_read(file_handle, data, %d) ha restituito: %d", 20, SimpleFS_read(file_handle, data, 20));
-		printf("\n    Adesso \"data\" contiene: %s", data);
+		char* data = (char*) calloc(21,sizeof(char));
+		printf("\n    SimpleFS_read(file_handle, data, %d) ha restituito: %d", 20, SimpleFS_read(file_handle,(void*) data, 20));
+		printf("\n    Adesso \"data\" contiene: %s", (char*) data);
+		free(data);
 
 		// Test SimpleFS_changeDir
 		printf("\n\n+++ Test SimpleFS_changeDir()");
@@ -282,6 +291,13 @@ int main(int argc, char** argv) {
 			printf("\n    > %s", elencopluto[i]);
 		}
 
+
+		for (i = 0; i < (directory_handle->dcb->num_entries); i++) {
+			free(elencopluto[i]);
+		}
+		free(elencopluto);
+
+
 		SimpleFS_changeDir(directory_handle, "..");
 		printf("\n    BitMap => ");
 		stampa_in_binario(disk.bitmap_data);
@@ -297,6 +313,10 @@ int main(int argc, char** argv) {
 		for(i = 0; i < dim; i++) {
 			printf("\n    > %s", elenco[i]);
 		}
+		for (i = 0; i < (directory_handle->dcb->num_entries); i++) {
+			free(elenco[i]);
+		}
+		free(elenco);
 
 		// Test SimpleFS_remove
 		/*printf("\n\n+++ Test SimpleFS_remove() [cartella]");
@@ -317,7 +337,7 @@ int main(int argc, char** argv) {
 		printf("\n\n+++ Test SimpleFS_remove() [file]");
 		char* nome = "prova2.txt";
 		ret = SimpleFS_remove(directory_handle, nome);
-		printf("\n    SimpleFS_remove(file_handle, \"%s\") => %d", nome, ret);
+		printf("\n    SimpleFS_remove(directory_handle, \"%s\") => %d", nome, ret);
 		if(ret >= 0) {
 			printf("\n    Cancellazione del file avvenuta correttamente");
 		}else{
@@ -326,6 +346,7 @@ int main(int argc, char** argv) {
 		}
 		printf("\n    BitMap => ");
 		stampa_in_binario(disk.bitmap_data);
+		free(directory_handle);
 	}
 	printf("\n\n");
 }
