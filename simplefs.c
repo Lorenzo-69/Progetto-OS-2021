@@ -629,62 +629,78 @@ int SimpleFS_changeDir(DirectoryHandle* d, char* dirname){
      sfs rimane lo stesso, cambia d->directory, d->dcb, d->current_block, d->pos_in_dir, d->pos_in_block.
      */
      if(dirname == NULL || d == NULL){
-         fprintf(stderr,"input changeDir non valido");
+         fprintf(stderr,"Errore: input non valido SimpleFS_changeDir\n");
          return -1;
      }
      if(strcmp(dirname,"..") == 0){
-         if(d->directory == NULL){
-             fprintf(stderr,"errore non esiste directory padre");
-             return -1;
-         }
-         FirstDirectoryBlock * new_parent = malloc(sizeof(FirstDirectoryBlock));
-         FirstDirectoryBlock * new_fdb;
-         DirectoryBlock * new_current_block = malloc(sizeof(DirectoryBlock));
-         int pos_in_dir;
-         int pos_in_block;
+		if(d->dcb->fcb.block_in_disk == 0){
+			return -1;
+		}
+		free(d->dcb);
+        int parent = d->directory->fcb.directory_block;
+		if(parent == -1) {
+			d->directory = NULL;
+			return 0;
+		}
+		d->pos_in_block = 0;
+		d->dcb = d->directory;
+        FirstDirectoryBlock * new_parent = malloc(sizeof(FirstDirectoryBlock));
 
-        if(DiskDriver_readBlock(d->sfs->disk,new_parent,d->directory->header.blocks[d->directory->fcb.directory_block],sizeof(FirstDirectoryBlock)) == -1){
+        DirectoryBlock * new_current_block = malloc(sizeof(DirectoryBlock));
+        int pos_in_dir;
+        int pos_in_block;
+
+        if(DiskDriver_readBlock(d->sfs->disk,new_parent,parent,sizeof(FirstDirectoryBlock)) == -1){
             fprintf(stderr,"errore lettura blocco padre (..)");
+			d->directory = NULL;
             return -1;
         }
-        new_fdb = d->directory;
-        if(DiskDriver_readBlock(d->sfs->disk,new_current_block,new_fdb->header.blocks[1],sizeof(DirectoryBlock)) == -1){
-            fprintf(stderr,"errore lettura blocco corrente (..)");
-            return -1;
-        }
-        pos_in_dir = 1;
-        pos_in_block = 1;
-        d->dcb = new_fdb;
-        d->directory = new_parent;
-        d->current_block = new_current_block;
-        d->pos_in_dir = pos_in_dir;
-        d->pos_in_block = pos_in_block;
+		d->directory = new_parent;
+		return 0;
      }
+	 else if(d->dcb->num_entries < 0) {
+		fprintf(stderr,"Errore: directory vuota\n");
+		return -1;
+	 }
      else{
          /*TODO
          cercare nella directory corrente la directory con nome dirname e aggiornare directory-handler
          */
+		FirstDirectoryBlock* fdb = d->dcb;
+		DiskDriver* disk = d->sfs->disk;
+
          FirstDirectoryBlock* fdb_ctrl = (FirstDirectoryBlock*) malloc(sizeof(FirstDirectoryBlock));
          DirectoryBlock* db = (DirectoryBlock*) malloc(sizeof(DirectoryBlock));
-         for(int i=0; d->dcb->num_entries; i++){
-             DiskDriver_readBlock(d->sfs->disk,db,d->dcb->header.blocks[i],sizeof(DirectoryBlock));
-             for(int j=0; j<(BLOCK_SIZE-sizeof(int)-sizeof(int))/sizeof(int); i++){
-                 if(db->file_blocks[j] == -1) continue;
-                 DiskDriver_readBlock(d->sfs->disk,fdb_ctrl,db->file_blocks[j],sizeof(FirstDirectoryBlock));
-                 //controllo se nome corrisponde e se è una directory
-                 if(strcmp(dirname,fdb_ctrl->fcb.name) == 0 && fdb_ctrl->fcb.is_dir == 1){
-                     d->directory = d->dcb;
-                     d->dcb = fdb_ctrl;
-                     d->current_block = db;
-                     d->pos_in_dir = db->pos;
-                     d->pos_in_block = db->index;
-                     return 0;
-                    }
-                }
+        
+		if(DiskDriver_readBlock(disk,db,fdb->header.blocks[0],sizeof(DirectoryBlock)) == -1){
+			return -1;
+		}
 
-            }
-        }
-        return 0;
+		int dim = (BLOCK_SIZE-sizeof(int)-sizeof(int))/sizeof(int);
+		while(db != NULL){
+			for(int i=0; i<dim; i++){
+				if(db->file_blocks[i] > 0){
+					if(DiskDriver_readBlock(disk,fdb_ctrl,db->file_blocks[i],sizeof(FirstDirectoryBlock)) != -1){
+						if(strncmp(fdb_ctrl->fcb.name,dirname,128) == 0){
+							d->pos_in_block = 0;
+							if(d->directory != NULL) free(d->directory);
+							d->directory = fdb;
+							d->dcb = fdb_ctrl;
+							free(db);
+							return 0;
+						}
+					}
+				}
+			}
+			if(fdb->fcb.block_in_disk == db->index)
+				db = next_block_directory(db, disk,0);
+			else
+				db = next_block_directory(db,disk,1);
+		}
+		free(db);
+		free(fdb_ctrl);
+		return -1;
+	}
  }
 
 //Stefano
