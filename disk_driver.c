@@ -75,7 +75,6 @@ void DiskDriver_init(DiskDriver* disk, const char* filename, int num_blocks){
 
 int DiskDriver_readBlock(DiskDriver* disk, void* dest, int block_num,int size){
   if(block_num >= disk->header->bitmap_blocks || block_num < 0 || dest == NULL || disk == NULL){
-		fprintf(stderr,"Errore: Input non valido DiskDriver_readBlock \n");
     return -1;
 	}
 	
@@ -235,4 +234,3 @@ int DiskDriver_getFreeBlock(DiskDriver* disk, int start){
 int DiskDriver_flush(DiskDriver* disk){
   int dim = sizeof(DiskHeader) +(disk->header->num_blocks/8) +1;
   return msync(disk->header, dim, MS_SYNC);
-}
