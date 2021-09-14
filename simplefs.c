@@ -390,15 +390,15 @@ int SimpleFS_write(FileHandle* f, void* data, int size){
 
     // indice blocco a cui accedere
     int file_index;
-    int index_block = pos - 90*space;
+    int index_block = pos - 87*space;
     if(index_block < 0) {
         index_block = 0;
-        file_index = pos / (90*space);
+        file_index = pos / (87*space);
         pos = pos - file_index*space;
     } else {
-        index_block = index_block / (90*space);
-        file_index = ((pos - 90*space)-index_block*(90*space))/space;
-        pos = pos - (pos - 90*space)-index_block*(90*space);
+        index_block = index_block / (87*space);
+        file_index = ((pos - 87*space)-index_block*(87*space))/space;
+        pos = pos - (pos - 87*space)-index_block*(87*space);
     }
 
     FirstBlockIndex index = ffb->header;
@@ -424,6 +424,16 @@ int SimpleFS_write(FileHandle* f, void* data, int size){
             if(pos+written > ffb->fcb.written_bytes){
                 ffb->fcb.written_bytes = pos + written;
             }
+			if(DiskDriver_updateBlock(disk,(void*)temp, index.blocks[file_index],sizeof(FileBlock)) == -1){ //R. Aggiorno file block su disco
+				fprintf(stderr,"Errore impossibile aggiornare file block 1.\n");
+				free(temp);
+				return -1;
+			}
+			if(DiskDriver_updateBlock(disk, ffb, ffb->fcb.block_in_disk,sizeof(FirstFileBlock)) == -1){ //R. Aggiorno il first file block
+				fprintf(stderr,"Errore impossibile aggiornare ffb.\n");
+				free(temp);
+				return -1;
+			}
             free(temp);
             return written;
         }
@@ -432,6 +442,11 @@ int SimpleFS_write(FileHandle* f, void* data, int size){
             memcpy(temp->data + pos, (char*) data, space - pos);
             written += space - pos;
             size = size - written;
+			if(DiskDriver_updateBlock(disk,(void*)temp, index.blocks[file_index],sizeof(FileBlock)) == -1){ //R. Aggiorno file block su disco
+				fprintf(stderr,"Errore impossibile updateBlock.\n");
+				free(temp);
+				return -1;
+			}
         }
     } else {
         free(temp);
@@ -443,9 +458,9 @@ int SimpleFS_write(FileHandle* f, void* data, int size){
 
     while(written < size && temp != NULL) {
         if(ffb->fcb.block_in_disk == temp->data[0]) {
-            position = create_next_file_block_first(corrente, temp, disk);
+            position = next_file_block(corrente, temp, disk,0);
         } else {
-            position = create_next_file_block(corrente, temp, disk);
+            position = next_file_block(corrente, temp, disk,1);
         }
         if(position == -1) {
             free(temp);
@@ -458,6 +473,11 @@ int SimpleFS_write(FileHandle* f, void* data, int size){
             if(f->pos_in_file+written > ffb->fcb.written_bytes){
                 ffb->fcb.written_bytes = f->pos_in_file+written;
             }
+			if(DiskDriver_updateBlock(disk, ffb, ffb->fcb.block_in_disk, sizeof(FirstFileBlock)) == -1){ //R. Aggiorno il first file block
+				fprintf(stderr,"Errore impossibile updateBlock.\n");
+				free(temp);
+				return -1;
+			}
             if(DiskDriver_writeBlock(disk, temp, position,sizeof(FileBlock)) == -1){
                 free(temp);
                 return -1;
@@ -707,152 +727,145 @@ int SimpleFS_remove(DirectoryHandle* d, char* filename){
 
 }
 
-
-int create_next_file_block(FileBlock* corrente, FileBlock* new, DiskDriver* disk){
+int next_file_block(FileBlock* corrente, FileBlock* new, DiskDriver* disk, int flag){
 	int index_corrente = corrente->pos;
-	
-	if(index_corrente + 1 == 126){
+
+	if(flag == 1){
 		BlockIndex* index = (BlockIndex*)malloc(sizeof(BlockIndex));
-        if(DiskDriver_readBlock(disk,index,corrente->num,sizeof(BlockIndex)) == -1){
-            free(index);
-            index = NULL;
-        }
-		if(index == NULL) return -1;
+		if(index_corrente + 1 == 126){
+        	if(DiskDriver_readBlock(disk,index,corrente->num,sizeof(BlockIndex)) == -1){
+            	free(index);
+            	index = NULL;
+        	}
+			if(index == NULL) return -1;
 
-		int new_block = DiskDriver_getFreeBlock(disk, index->blocks[index_corrente]);
-		if(new_block == -1){
-			free(index);
-			return -1;
-		}
-		
-		int block = DiskDriver_getFreeBlock(disk, new_block + 1);
-		if(block == -1){
-			free(index);
-			return -1;
-		}
-		
-		int index_block = corrente->num;
-		
-		index->post = new_block;
+			int new_block = DiskDriver_getFreeBlock(disk, index->blocks[index_corrente]);
+			if(new_block == -1){
+				free(index);
+				return -1;
+			}
 
-		BlockIndex new_index;
-        new_index.pre = index_block;
-        new_index.post = -1;
-        for(int i=0; i<126; i++) new_index.blocks[i] = -1;
-		new_index.blocks[0] = block;
-		if(DiskDriver_writeBlock(disk, &new_index, new_block,sizeof(BlockIndex)) == -1){
-			free(index);
-			return -1;
-		}
+			int block = DiskDriver_getFreeBlock(disk, new_block + 1);
+			if(block == -1){
+				free(index);
+				return -1;
+			}
+		
+			int index_block = corrente->num;
+		
+			index->post = new_block;
 
-		new->num = new_block;
-		new->pos = 0;
+			BlockIndex new_index;
+        	new_index.pre = index_block;
+        	new_index.post = -1;
+        	for(int i=0; i<126; i++) new_index.blocks[i] = -1;
+			new_index.blocks[0] = block;
+			if(DiskDriver_writeBlock(disk, &new_index, new_block,sizeof(BlockIndex)) == -1){
+				free(index);
+				return -1;
+			}
+
+			new->num = new_block;
+			new->pos = 0;
 		
-		free(index);
+			free(index);
 		
-		return block;
+			return block;
 		
+		}
+		else{
+        	if(DiskDriver_readBlock(disk,index,corrente->num,sizeof(BlockIndex)) == -1){
+        	    free(index);
+        	    index = NULL;
+        	}
+			if(index == NULL) return -1;
+		
+			int index_block = corrente -> num; 
+
+			new->num = index_block;
+			new->pos = index_corrente + 1;
+		
+			int block = DiskDriver_getFreeBlock(disk, index->blocks[index_corrente]);
+			if(block == -1){
+				free(index);
+				return -1;
+			}
+		
+			index->blocks[new->pos] = block;
+		
+			free(index);
+		
+			return block;
+		}
+	}else{
+		if(index_corrente + 1 == 90){
+        	FirstBlockIndex* index = (FirstBlockIndex*)malloc(sizeof(FirstBlockIndex));
+        	if(DiskDriver_readBlock(disk, index, corrente->num,sizeof(FirstBlockIndex)) == -1) {
+            	free(index);
+           		index = NULL;
+        	}
+
+        	if(index == NULL) return -1;
+    
+        	int new_block = DiskDriver_getFreeBlock(disk, index->blocks[index_corrente]);
+        	if(new_block == -1){
+            	free(index);
+            	return -1;
+        	}
+
+        	int block = DiskDriver_getFreeBlock(disk, new_block+1);
+        	if(block == -1){
+            	free(index);
+            	return -1;
+        	}
+
+        	int index_block = corrente->num ;
+        	index->post = new_block;
+
+        	BlockIndex new_index;
+        	index->pre = index_block;
+        	index->post = -1;
+        	for( int i=0; i<126;i++) index->blocks[i] = -1;
+
+        	new_index.blocks[0] = block;
+        	if(DiskDriver_writeBlock(disk, &new_index, new_block,sizeof(BlockIndex)) == -1){
+            	free(index);
+            	return -1;
+        	}
+
+        	new->num = new_block;
+        	new->pos = 0;
+        	free(index);
+        	return block;
+    	} else {
+        	FirstBlockIndex* index = (FirstBlockIndex*)malloc(sizeof(FirstBlockIndex));
+        	if(DiskDriver_readBlock(disk, index, corrente->num,sizeof(FirstBlockIndex)) == -1) {
+        	    free(index);
+        	    index = NULL;
+        	}
+        	if(index == NULL) return -1;
+
+    	    int index_block = corrente->num;
+
+        	new->num=index_block;
+        	new->pos=index_corrente +1;
+
+        	int block = DiskDriver_getFreeBlock(disk, index->blocks[index_corrente]);
+        	if(block == -1) {
+            	free(index);
+        	    return -1;
+        	}
+
+        	index->blocks[new->pos] = block;
+
+        	free(index);
+        	return block;
+    	}
 	}
-	else{
-		
-		BlockIndex* index = (BlockIndex*)malloc(sizeof(BlockIndex));
-        if(DiskDriver_readBlock(disk,index,corrente->num,sizeof(BlockIndex)) == -1){
-            free(index);
-            index = NULL;
-        }
-		if(index == NULL) return -1;
-		
-		int index_block = corrente -> num; 
 
-		new->num = index_block;
-		new->pos = index_corrente + 1;
-		
-		int block = DiskDriver_getFreeBlock(disk, index->blocks[index_corrente]);
-		if(block == -1){
-			free(index);
-			return -1;
-		}
-		
-		index->blocks[new->pos] = block;
-		
-		free(index);
-		
-		return block;
-	}
 
 }
 
-
-
-int create_next_file_block_first(FileBlock* corrente, FileBlock* new, DiskDriver* disk) {
-    int index_corrente = corrente->pos;
-
-    if(index_corrente + 1 == 90){
-        FirstBlockIndex* index = (FirstBlockIndex*)malloc(sizeof(FirstBlockIndex));
-        if(DiskDriver_readBlock(disk, index, corrente->num,sizeof(FirstBlockIndex)) == -1) {
-            free(index);
-            index = NULL;
-        }
-
-        if(index == NULL) return -1;
-    
-        int new_block = DiskDriver_getFreeBlock(disk, index->blocks[index_corrente]);
-        if(new_block == -1){
-            free(index);
-            return -1;
-        }
-
-        int block = DiskDriver_getFreeBlock(disk, new_block+1);
-        if(block == -1){
-            free(index);
-            return -1;
-        }
-
-        int index_block = corrente->num ;
-        index->post = new_block;
-
-        BlockIndex new_index;
-        index->pre = index_block;
-        index->post = -1;
-        for( int i=0; i<126;i++) index->blocks[i] = -1;
-
-        new_index.blocks[0] = block;
-        if(DiskDriver_writeBlock(disk, &new_index, new_block,sizeof(BlockIndex)) == -1){
-            free(index);
-            return -1;
-        }
-
-        new->num = new_block;
-        new->pos = 0;
-        free(index);
-        return block;
-    } else {
-        FirstBlockIndex* index = (FirstBlockIndex*)malloc(sizeof(FirstBlockIndex));
-        if(DiskDriver_readBlock(disk, index, corrente->num,sizeof(FirstBlockIndex)) == -1) {
-            free(index);
-            index = NULL;
-        }
-        if(index == NULL) return -1;
-
-        int index_block = corrente->num;
-
-        new->num=index_block;
-        new->pos=index_corrente +1;
-
-        int block = DiskDriver_getFreeBlock(disk, index->blocks[index_corrente]);
-        if(block == -1) {
-            free(index);
-            return -1;
-        }
-
-        index->blocks[new->pos] = block;
-
-        free(index);
-        return block;
-    }
-
-    
-}
 int AssignDirectory(DiskDriver* disk, FirstDirectoryBlock* fdb, int ffb, int fb){
 	
 	int i, block_pos, dim = (BLOCK_SIZE-sizeof(int)-sizeof(int))/sizeof(int);
