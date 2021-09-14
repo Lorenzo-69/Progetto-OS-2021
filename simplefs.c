@@ -10,22 +10,21 @@ DirectoryHandle* SimpleFS_init(SimpleFS* fs, DiskDriver* disk) {
     if(fs == NULL || disk == NULL) return NULL;
 	
 	fs->disk = disk;
-	FirstDirectoryBlock* fdb = (FirstDirectoryBlock*)malloc(sizeof(FirstDirectoryBlock));
-	if(fdb == NULL){
-		fprintf(stderr, "Errore creazione FirstDIrectoryBlock SimpleFs_Init.\n");
+	FirstDirectoryBlock* first_directory_block = (FirstDirectoryBlock*)malloc(sizeof(FirstDirectoryBlock));
+	if(first_directory_block == NULL){
+		fprintf(stderr, "Errore creazione FirstDIrectoryBlock.\n");
 		return NULL;
 	}	
 	
-	int res = DiskDriver_readBlock(disk,fdb,0, sizeof(FirstDirectoryBlock));
+	int res = DiskDriver_readBlock(disk,first_directory_block,0, sizeof(FirstDirectoryBlock));
 	if(res == 0){ 
-		fprintf(stderr,"Errore: readBlock del FirstDirectoryBlock SImpleFS_init\n");
-		free(fdb);
+		free(first_directory_block);
 		return NULL;
-	}			
+	};				
 	
-	DirectoryHandle* dir = (DirectoryHandle*)malloc(sizeof(DirectoryHandle));
-	if(dir == NULL){
-		fprintf(stderr, "Errore creazione directory_handle SimpleFS_init.\n");
+	DirectoryHandle* directory_handle = (DirectoryHandle*)malloc(sizeof(DirectoryHandle));
+	if(directory_handle == NULL){
+		fprintf(stderr, "Errore creazione directory_handle.\n");
 		return NULL;
 	}
 
@@ -33,14 +32,14 @@ DirectoryHandle* SimpleFS_init(SimpleFS* fs, DiskDriver* disk) {
 		SimpleFS_format(fs);
 	}
 	
-	dir->sfs = fs;
-	dir->dcb = fdb;
-	dir->directory = NULL;
-	dir->current_block = NULL;
-	dir->pos_in_dir = 0;
-	dir->pos_in_block = 0;
+	directory_handle->sfs = fs;
+	directory_handle->dcb = first_directory_block;
+	directory_handle->directory = NULL;
+	directory_handle->current_block = NULL;
+	directory_handle->pos_in_dir = 0;
+	directory_handle->pos_in_block = 0;
 	
-	return dir;
+	return directory_handle;
 }
 
 //Lorenzo
@@ -984,145 +983,6 @@ int next_file_block(FileBlock* corrente, FileBlock* new, DiskDriver* disk, int f
 
 }
 
-int AssignDirectory(DiskDriver* disk, FirstDirectoryBlock* fdb, int ffb, int fb){
-	
-	int i, block_pos, dim = (BLOCK_SIZE-sizeof(int)-sizeof(int))/sizeof(int);
-	int found = 0;
-	
-	DirectoryBlock* db = (DirectoryBlock*)malloc(sizeof(DirectoryBlock));
-	if(db == NULL) return -1;
-	if(DiskDriver_readBlock(disk, db, fdb->header.blocks[0],sizeof(DirectoryBlock)) == -1){
-		fprintf(stderr,"Errore: readBlock AssignDirectory.\n");
-		free(db);
-		return -1;
-	}
-
-	for(i=0; i<dim; i++){
-		if(db->file_blocks[i] == 0){  
-			found = 1;
-			block_pos = i;
-			break;
-		}
-	}
-	
-	db->file_blocks[block_pos] = ffb;
-	
-	fdb->num_entries++;
-
-	int pos_db;
-	if(DiskDriver_updateBlock(disk, fdb, fdb->fcb.block_in_disk, sizeof(FirstDirectoryBlock)) != -1){
-		db->index = fdb->fcb.block_in_disk;
-		if(fdb->fcb.block_in_disk != db->index){
-			BlockIndex index;
-			if(DiskDriver_readBlock(disk, &index, db->index, sizeof(BlockIndex)) == -1){
-				fprintf(stderr,"Errore: impossibile leggere l'indice del blocco AssignDirectory.\n");
-				return -1;
-			}
-			pos_db = index.blocks[db->pos];
-		}else{
-			FirstBlockIndex index;
-			if(DiskDriver_readBlock(disk, &index, db->index, sizeof(FirstBlockIndex)) == -1){
-				fprintf(stderr,"Errore: impossibile leggere l'indice del blocco AssignDirectory.\n");
-				return -1;
-			}
-			pos_db = index.blocks[db->pos];
-		}
-	}else {
-		fprintf(stderr,"Errore: updateBlock fdb AssignDirectory.\n");
-		free(db);
-		return -1;
-	}
-
-	if(DiskDriver_updateBlock(disk, db, pos_db, sizeof(DirectoryBlock)) == -1){
-		fprintf(stderr,"Errore: updateBlock db AssignDirectory.\n");
-		free(db);
-		return -1;
-	}
-	
-	free(db);
-	return 0;		
-}
-
-DirectoryBlock* next_block_directory(DirectoryBlock* directory,DiskDriver* disk,int flag){
-	int current_position = directory->pos;
-	DirectoryBlock* next_directory = (DirectoryBlock*)malloc(sizeof(DirectoryBlock));
-	if(flag == 1){
-		BlockIndex* index = (BlockIndex*) malloc(sizeof(BlockIndex));
-		if (DiskDriver_readBlock(disk, index, directory->index, sizeof(BlockIndex)) == -1) return NULL;
-		if((current_position +1) != 120){
-			if(DiskDriver_readBlock(disk, next_directory, index->blocks[current_position + 1], sizeof(DirectoryBlock)) == -1){
-				fprintf(stderr,"Errore: readBlock directory next_block_directory\n");
-				free(next_directory);
-				free(index);
-				return NULL;
-			}
-		free(index);
-		free(directory);
-
-		}else{
-			if(index->post == -1){
-				fprintf(stderr,"Errore blocco successivo non esiste next_block_directory\n");
-				free(index);
-				return NULL;
-			}
-			BlockIndex* next = (BlockIndex*)malloc(sizeof(BlockIndex));
-			if(DiskDriver_readBlock(disk, next, index->post, sizeof(BlockIndex)) == -1){
-				fprintf(stderr,"Errore readBlock next_block_directory\n");
-				free(next);
-				free(index);
-				return NULL;
-			}
-			if(DiskDriver_readBlock(disk, next_directory, next->blocks[0], sizeof(DirectoryBlock)) == -1){
-				fprintf(stderr,"Errore readBlock next_block_directory\n");
-				free(next_directory);
-				free(index);
-				free(next);
-				return NULL;
-			}
-			free(index);
-			free(next);
-		}
-	}else{
-		FirstBlockIndex* index = (FirstBlockIndex*) malloc(sizeof(FirstBlockIndex));
-		if(DiskDriver_readBlock(disk, index, directory->index, sizeof(FirstBlockIndex)) == -1){
-			return NULL;
-		}
-		if((current_position + 1) == 87){
-			if(index->post == -1){
-				fprintf(stderr,"Errore blocco successivo non esiste next_block_directory\n");
-				free(index);
-				return NULL;
-			}
-			BlockIndex* next = (BlockIndex*)malloc(sizeof(BlockIndex));
-			if(DiskDriver_readBlock(disk, next, index->post, sizeof(BlockIndex)) == -1){
-				fprintf(stderr,"Errore readBlock next_block_directory\n");
-				free(next);
-				free(index);
-				return NULL;
-			}
-			if(DiskDriver_readBlock(disk, next_directory, next->blocks[0], sizeof(DirectoryBlock)) == -1){
-				fprintf(stderr,"Errore readBlock next_block_directory\n");
-				free(next_directory);
-				free(index);
-				free(next);
-				return NULL;
-			}
-			free(index);
-			free(next);
-			}
-		else{
-			if(DiskDriver_readBlock(disk, next_directory, index->blocks[current_position + 1], sizeof(DirectoryBlock)) == -1){
-				fprintf(stderr,"Errore readBlock next_block_directory\n");
-				free(next_directory);
-				free(index);
-				return NULL;
-			}
-			free(index);
-		}
-	}
-	return next_directory;
-}
-
 FileBlock* next_block_file(FileBlock* file,DiskDriver* disk, int flag){
 
 	if(flag == 1){
@@ -1223,4 +1083,142 @@ FileBlock* next_block_file(FileBlock* file,DiskDriver* disk, int flag){
 		}
 	}
 
+}
+
+DirectoryBlock* next_block_directory(DirectoryBlock* directory,DiskDriver* disk,int flag){
+	int current_position = directory->pos;
+	DirectoryBlock* next_directory = (DirectoryBlock*)malloc(sizeof(DirectoryBlock));
+	if(flag == 1){
+		BlockIndex* index = (BlockIndex*) malloc(sizeof(BlockIndex));
+		if (DiskDriver_readBlock(disk, index, directory->index, sizeof(BlockIndex)) == -1) return NULL;
+		if((current_position +1) != 120){
+			if(DiskDriver_readBlock(disk, next_directory, index->blocks[current_position + 1], sizeof(DirectoryBlock)) == -1){
+				fprintf(stderr,"Errore: readBlock directory next_block_directory\n");
+				free(next_directory);
+				free(index);
+				return NULL;
+			}
+		free(index);
+		free(directory);
+
+		}else{
+			if(index->post == -1){
+				fprintf(stderr,"Errore blocco successivo non esiste next_block_directory\n");
+				free(index);
+				return NULL;
+			}
+			BlockIndex* next = (BlockIndex*)malloc(sizeof(BlockIndex));
+			if(DiskDriver_readBlock(disk, next, index->post, sizeof(BlockIndex)) == -1){
+				fprintf(stderr,"Errore readBlock next_block_directory\n");
+				free(next);
+				free(index);
+				return NULL;
+			}
+			if(DiskDriver_readBlock(disk, next_directory, next->blocks[0], sizeof(DirectoryBlock)) == -1){
+				fprintf(stderr,"Errore readBlock next_block_directory\n");
+				free(next_directory);
+				free(index);
+				free(next);
+				return NULL;
+			}
+			free(index);
+			free(next);
+		}
+	}else{
+		FirstBlockIndex* index = (FirstBlockIndex*) malloc(sizeof(FirstBlockIndex));
+		if(DiskDriver_readBlock(disk, index, directory->index, sizeof(FirstBlockIndex)) == -1){
+			return NULL;
+		}
+		if((current_position + 1) == 87){
+			if(index->post == -1){
+				fprintf(stderr,"Errore blocco successivo non esiste next_block_directory\n");
+				free(index);
+				return NULL;
+			}
+			BlockIndex* next = (BlockIndex*)malloc(sizeof(BlockIndex));
+			if(DiskDriver_readBlock(disk, next, index->post, sizeof(BlockIndex)) == -1){
+				fprintf(stderr,"Errore readBlock next_block_directory\n");
+				free(next);
+				free(index);
+				return NULL;
+			}
+			if(DiskDriver_readBlock(disk, next_directory, next->blocks[0], sizeof(DirectoryBlock)) == -1){
+				fprintf(stderr,"Errore readBlock next_block_directory\n");
+				free(next_directory);
+				free(index);
+				free(next);
+				return NULL;
+			}
+			free(index);
+			free(next);
+			}
+		else{
+			if(DiskDriver_readBlock(disk, next_directory, index->blocks[current_position + 1], sizeof(DirectoryBlock)) == -1){
+				free(next_directory);
+				free(index);
+				return NULL;
+			}
+			free(index);
+		}
+	}
+	return next_directory;
+}
+
+int AssignDirectory(DiskDriver* disk, FirstDirectoryBlock* fdb, int ffb, int fb){
+	
+	int i, block_pos, dim = (BLOCK_SIZE-sizeof(int)-sizeof(int))/sizeof(int);
+	int found = 0;
+	
+	DirectoryBlock* db = (DirectoryBlock*)malloc(sizeof(DirectoryBlock));
+	if(db == NULL) return -1;
+	if(DiskDriver_readBlock(disk, db, fdb->header.blocks[0],sizeof(DirectoryBlock)) == -1){
+		fprintf(stderr,"Errore: readBlock AssignDirectory.\n");
+		free(db);
+		return -1;
+	}
+
+	for(i=0; i<dim; i++){
+		if(db->file_blocks[i] == 0){  
+			found = 1;
+			block_pos = i;
+			break;
+		}
+	}
+	
+	db->file_blocks[block_pos] = ffb;
+	
+	fdb->num_entries++;
+
+	int pos_db;
+	if(DiskDriver_updateBlock(disk, fdb, fdb->fcb.block_in_disk, sizeof(FirstDirectoryBlock)) != -1){
+		db->index = fdb->fcb.block_in_disk;
+		if(fdb->fcb.block_in_disk != db->index){
+			BlockIndex index;
+			if(DiskDriver_readBlock(disk, &index, db->index, sizeof(BlockIndex)) == -1){
+				fprintf(stderr,"Errore: impossibile leggere l'indice del blocco AssignDirectory.\n");
+				return -1;
+			}
+			pos_db = index.blocks[db->pos];
+		}else{
+			FirstBlockIndex index;
+			if(DiskDriver_readBlock(disk, &index, db->index, sizeof(FirstBlockIndex)) == -1){
+				fprintf(stderr,"Errore: impossibile leggere l'indice del blocco AssignDirectory.\n");
+				return -1;
+			}
+			pos_db = index.blocks[db->pos];
+		}
+	}else {
+		fprintf(stderr,"Errore: updateBlock fdb AssignDirectory.\n");
+		free(db);
+		return -1;
+	}
+
+	if(DiskDriver_updateBlock(disk, db, pos_db, sizeof(DirectoryBlock)) == -1){
+		fprintf(stderr,"Errore: updateBlock db AssignDirectory.\n");
+		free(db);
+		return -1;
+	}
+	
+	free(db);
+	return 0;		
 }
