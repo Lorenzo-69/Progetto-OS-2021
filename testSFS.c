@@ -17,7 +17,7 @@
 int test;
 int use_global_test = FALSE;
 int use_file_for_test = 0;
-const char* filename = "./disk_driver_test1.txt";
+const char* filename = "./disk_driver_test6.txt";
 
 void stampa_in_binario(char* stringa) {
 	int i, j;
@@ -125,7 +125,7 @@ int main(int argc, char** argv) {
 		// Test DiskDriver_readBlock
 		printf("\n\n+++ Test DiskDriver_readBlock()");
 		
-		void * dest = malloc(BLOCK_SIZE);
+		void * dest = calloc(BLOCK_SIZE,sizeof(void*));
 		printf("\n    Controlliamo tramite una readBlock(dest, 4)   => %d", DiskDriver_readBlock(&disk, dest, 4,4));
 		printf("\n    Dopo la readBlock, la dest contiene           => %s", (char *) dest);
 
