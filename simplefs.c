@@ -732,7 +732,7 @@ int SimpleFS_mkDir(DirectoryHandle* d, char* dirname) {
     FirstBlockIndex fbi;
     fbi.pre = -1;
     fbi.post = -1;
-    for( int i=0; i<90; i++) {
+    for( int i=0; i<87; i++) {
         fbi.blocks[i] = -1;
     }
 
@@ -749,6 +749,7 @@ int SimpleFS_mkDir(DirectoryHandle* d, char* dirname) {
         return -1;
     }
 
+
     fbi.blocks[0] = free_block;
 
     dir->header = fbi; // settare FirstBlockIndex
@@ -758,11 +759,14 @@ int SimpleFS_mkDir(DirectoryHandle* d, char* dirname) {
         return -1;
     }
 
-    if(DiskDriver_writeBlock(disk,dir,free_block, sizeof(FirstDirectoryBlock)) == -1){
+    if(DiskDriver_writeBlock(disk,&block,free_block, sizeof(DirectoryBlock)) == -1){
         return -1;
     }
 
-
+	if(AssignDirectory(disk,fdb,new_block,free_block) == -1){
+		fprintf(stderr, "Errore in mkdir impossibile assegnare directory.\n");
+		return -1;
+	}
     free(dir);
     return 0;
     
