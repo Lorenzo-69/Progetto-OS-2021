@@ -436,7 +436,7 @@ int SimpleFS_write(FileHandle* f, void* data, int size){
 
     // vado alla posizione giusta
     for(int i=0; i<index_block; i++){
-        if(DiskDriver_readBlock(disk, (void*)&index, index.post, sizeof(FirstBlockIndex)) == -1){
+        if(DiskDriver_readBlock(disk, (void*)&index, index.post, sizeof(BlockIndex)) == -1){
             return -1;
         }
     }
