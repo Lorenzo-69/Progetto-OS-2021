@@ -455,12 +455,12 @@ int SimpleFS_write(FileHandle* f, void* data, int size){
             if(pos+written > ffb->fcb.written_bytes){
                 ffb->fcb.written_bytes = pos + written;
             }
-			if(DiskDriver_updateBlock(disk,(void*)temp, index.blocks[file_index],sizeof(FileBlock)) == -1){ //R. Aggiorno file block su disco
+			if(DiskDriver_updateBlock(disk,(void*)temp, index.blocks[file_index],sizeof(FileBlock)) == -1){
 				fprintf(stderr,"Errore impossibile aggiornare file block 1.\n");
 				free(temp);
 				return -1;
 			}
-			if(DiskDriver_updateBlock(disk, ffb, ffb->fcb.block_in_disk,sizeof(FirstFileBlock)) == -1){ //R. Aggiorno il first file block
+			if(DiskDriver_updateBlock(disk, ffb, ffb->fcb.block_in_disk,sizeof(FirstFileBlock)) == -1){ 
 				fprintf(stderr,"Errore impossibile aggiornare ffb.\n");
 				free(temp);
 				return -1;
@@ -473,7 +473,7 @@ int SimpleFS_write(FileHandle* f, void* data, int size){
             memcpy(temp->data + pos, (char*) data, space - pos);
             written += space - pos;
             size = size - written;
-			if(DiskDriver_updateBlock(disk,(void*)temp, index.blocks[file_index],sizeof(FileBlock)) == -1){ //R. Aggiorno file block su disco
+			if(DiskDriver_updateBlock(disk,(void*)temp, index.blocks[file_index],sizeof(FileBlock)) == -1){ 
 				fprintf(stderr,"Errore impossibile updateBlock.\n");
 				free(temp);
 				return -1;
@@ -506,7 +506,7 @@ int SimpleFS_write(FileHandle* f, void* data, int size){
             if(f->pos_in_file+written > ffb->fcb.written_bytes){
                 ffb->fcb.written_bytes = f->pos_in_file+written;
             }
-			if(DiskDriver_updateBlock(disk, ffb, ffb->fcb.block_in_disk, sizeof(FirstFileBlock)) == -1){ //R. Aggiorno il first file block
+			if(DiskDriver_updateBlock(disk, ffb, ffb->fcb.block_in_disk, sizeof(FirstFileBlock)) == -1){ 
 				fprintf(stderr,"Errore impossibile updateBlock.\n");
 				free(temp);
 				return -1;
