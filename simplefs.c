@@ -424,12 +424,12 @@ int SimpleFS_write(FileHandle* f, void* data, int size){
     int index_block = pos - 87*space;
     if(index_block < 0) {
         index_block = 0;
-        file_index = pos / (87*space);
+        file_index = pos / (126*space);
         pos = pos - file_index*space;
     } else {
-        index_block = index_block / (87*space);
-        file_index = ((pos - 87*space)-index_block*(87*space))/space;
-        pos = pos - (pos - 87*space)-index_block*(87*space);
+        index_block = index_block / (126*space);
+        file_index = ((pos - 87*space)-index_block*(126*space))/space;
+        pos = pos - (pos - 87*space)-index_block*(126*space);
     }
 
     FirstBlockIndex index = ffb->header;
@@ -562,16 +562,16 @@ int SimpleFS_read(FileHandle* f, void* data, int size){
 	
 	// prendo indice del blocco a cui leggere
 	int file_index_pos;
-	int index_block_ref = off - 126*space_file_block;
+	int index_block_ref = off - 87*space_file_block;
 	if(index_block_ref < 0){
 		index_block_ref = 0;
-		file_index_pos = off / (87*space_file_block);
+		file_index_pos = off / (126*space_file_block);
 		off = off - file_index_pos * space_file_block;
 	}
 	else{
-		index_block_ref = index_block_ref / (87*space_file_block);
-		file_index_pos = ((off - 126*space_file_block)-index_block_ref*(87*space_file_block))/space_file_block;
-		off = off - (off - 126*space_file_block)-index_block_ref*(87*space_file_block);
+		index_block_ref = index_block_ref / (126*space_file_block);
+		file_index_pos = ((off - 87*space_file_block)-index_block_ref*(126*space_file_block))/space_file_block;
+		off = off - (off - 87*space_file_block)-index_block_ref*(126*space_file_block);
 	}
 		
 	FirstBlockIndex index = first_file->header;
